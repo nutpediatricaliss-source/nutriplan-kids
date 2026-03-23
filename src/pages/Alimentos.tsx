@@ -160,7 +160,10 @@ export default function Alimentos() {
             onChange={handleImport}
             className="hidden"
           />
-          <Button variant="outline" className="gap-2" onClick={() => fileRef.current?.click()}>
+          <Button variant="outline" className="gap-2" onClick={() => {
+            if (fileRef.current) fileRef.current.value = "";
+            fileRef.current?.click();
+          }}>
             <Upload className="h-4 w-4" />
             Importar CSV/JSON
           </Button>
