@@ -82,9 +82,16 @@ export default function Alimentos() {
       records = JSON.parse(text);
     } else if (file.name.endsWith(".csv")) {
       const lines = text.split("\n").filter((l) => l.trim().length > 0);
-      const headers = parseCSVLine(lines[0]).map((h) => h.replace(/^\uFEFF/, '').trim());
+      const firstLine = lines[0].replace(/^\uFEFF/, '');
+      // Auto-detect delimiter: semicolon or comma
+      const delimiter = firstLine.includes(";") ? ";" : ",";
+      const splitLine = (line: string) => {
+        if (delimiter === ",") return parseCSVLine(line);
+        return line.split(delimiter).map((v) => v.trim());
+      };
+      const headers = splitLine(firstLine).map((h) => h.trim());
       records = lines.slice(1).map((line) => {
-        const values = parseCSVLine(line);
+        const values = splitLine(line);
         const obj: any = {};
         headers.forEach((h, i) => {
           obj[h] = values[i] ?? "";
