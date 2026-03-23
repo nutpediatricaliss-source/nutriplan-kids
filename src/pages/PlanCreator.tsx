@@ -50,6 +50,7 @@ import {
   Settings,
   ChevronDown,
   Activity,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
