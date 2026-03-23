@@ -294,15 +294,12 @@ export default function PlanCreator() {
             value={String(plan.dias)}
             onValueChange={(v) => updatePlan({ dias: parseInt(v) })}
           >
-            <SelectTrigger className="w-28">
+            <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: 17 }, (_, i) => i + 14).map((d) => (
-                <SelectItem key={d} value={String(d)}>
-                  {d} días
-                </SelectItem>
-              ))}
+              <SelectItem value="14">14 días (2 sem)</SelectItem>
+              <SelectItem value="28">1 mes (4 sem)</SelectItem>
             </SelectContent>
           </Select>
 
