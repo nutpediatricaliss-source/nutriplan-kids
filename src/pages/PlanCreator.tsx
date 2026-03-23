@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -24,6 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DndContext,
   DragOverlay,
@@ -43,7 +47,8 @@ import {
   GripVertical,
   X,
   Settings,
-  FileText,
+  ChevronDown,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,13 +68,7 @@ function DraggableItem({ id, children }: { id: string; children: React.ReactNode
 }
 
 // ─── Droppable meal slot ────────────────────────────────────────────────────
-function DroppableSlot({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) {
+function DroppableSlot({ id, children }: { id: string; children: React.ReactNode }) {
   const { isOver, setNodeRef } = useDroppable({ id });
   return (
     <div
@@ -99,7 +98,11 @@ export default function PlanCreator() {
   const [searchTab, setSearchTab] = useState<"alimentos" | "recetas">("alimentos");
   const [searchQuery, setSearchQuery] = useState("");
   const [modoPorciones, setModoPorciones] = useState(false);
+  const [modoMacros, setModoMacros] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Which week is expanded (0-indexed), default to week containing currentDay
+  const [expandedWeek, setExpandedWeek] = useState(0);
 
   // Meal times management
   const [mealTimesDialogOpen, setMealTimesDialogOpen] = useState(false);
@@ -151,6 +154,11 @@ export default function PlanCreator() {
     fetchAll();
   }, [fetchAll]);
 
+  // Keep expanded week in sync with currentDay
+  useEffect(() => {
+    setExpandedWeek(Math.floor((currentDay - 1) / 7));
+  }, [currentDay]);
+
   // ─── Plan updates ──────────────────────────────────────────────────────
   const updatePlan = async (updates: Partial<PlanMenu>) => {
     if (!plan) return;
@@ -191,11 +199,11 @@ export default function PlanCreator() {
     const { active, over } = event;
     if (!over || !plan) return;
 
-    const dropId = over.id as string; // format: "slot-{tiempoComida}"
+    const dropId = over.id as string;
     if (!dropId.startsWith("slot-")) return;
 
     const tiempoComida = dropId.replace("slot-", "");
-    const dragId = active.id as string; // format: "alimento-{id}" or "receta-{id}"
+    const dragId = active.id as string;
     const [tipo, itemId] = [
       dragId.startsWith("alimento-") ? "alimento" : "receta",
       dragId.replace(/^(alimento|receta)-/, ""),
@@ -252,6 +260,18 @@ export default function PlanCreator() {
     return recetas.find((r) => r.id === item.item_id)?.nombre ?? "Receta";
   };
 
+  // ─── Get macros for an alimento ───────────────────────────────────────
+  const getAlimentoMacros = (itemId: string) => {
+    const a = alimentos.find((al) => al.id === itemId);
+    if (!a) return null;
+    return {
+      cal: a.calorias ?? 0,
+      prot: a.proteinas ?? 0,
+      grasas: a.grasas ?? 0,
+      carbs: a.carbohidratos ?? 0,
+    };
+  };
+
   // ─── Active drag overlay ──────────────────────────────────────────────
   const getActiveName = () => {
     if (!activeId) return "";
@@ -270,6 +290,8 @@ export default function PlanCreator() {
       </div>
     );
   }
+
+  const totalWeeks = Math.ceil(plan.dias / 7);
 
   return (
     <DndContext
@@ -351,35 +373,50 @@ export default function PlanCreator() {
           </Dialog>
         </div>
 
-        {/* ─── Day navigation by weeks ─────────────────────────────────────── */}
-        <div className="space-y-2">
-          {Array.from({ length: Math.ceil(plan.dias / 7) }, (_, weekIdx) => {
+        {/* ─── Day navigation: collapsible weeks ──────────────────────────── */}
+        <div className="space-y-1">
+          {Array.from({ length: totalWeeks }, (_, weekIdx) => {
             const weekStart = weekIdx * 7 + 1;
             const weekEnd = Math.min(weekStart + 6, plan.dias);
+            const isOpen = expandedWeek === weekIdx;
             return (
-              <div key={weekIdx}>
-                <p className="mb-1 text-xs font-semibold text-muted-foreground">
+              <Collapsible
+                key={weekIdx}
+                open={isOpen}
+                onOpenChange={(open) => {
+                  if (open) setExpandedWeek(weekIdx);
+                }}
+              >
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-accent transition-colors">
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-0" : "-rotate-90"}`}
+                  />
                   Semana {weekIdx + 1}
-                </p>
-                <div className="flex gap-1">
-                  {Array.from({ length: weekEnd - weekStart + 1 }, (_, i) => {
-                    const day = weekStart + i;
-                    return (
-                      <button
-                        key={day}
-                        onClick={() => setCurrentDay(day)}
-                        className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                          currentDay === day
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-accent"
-                        }`}
-                      >
-                        Día {day}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                  <span className="text-xs font-normal">
+                    (Días {weekStart}–{weekEnd})
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="flex gap-1 px-3 py-1">
+                    {Array.from({ length: weekEnd - weekStart + 1 }, (_, i) => {
+                      const day = weekStart + i;
+                      return (
+                        <button
+                          key={day}
+                          onClick={() => setCurrentDay(day)}
+                          className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                            currentDay === day
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Día {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </div>
@@ -421,15 +458,27 @@ export default function PlanCreator() {
                   className="h-8 pl-8 text-sm"
                 />
               </div>
-              {searchTab === "alimentos" && (
+              <div className="space-y-1.5">
+                {searchTab === "alimentos" && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Modo Porciones</Label>
+                    <Switch
+                      checked={modoPorciones}
+                      onCheckedChange={setModoPorciones}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">Modo Porciones</Label>
+                  <Label className="text-xs flex items-center gap-1">
+                    <Activity className="h-3 w-3" />
+                    Mostrar Macros
+                  </Label>
                   <Switch
-                    checked={modoPorciones}
-                    onCheckedChange={setModoPorciones}
+                    checked={modoMacros}
+                    onCheckedChange={setModoMacros}
                   />
                 </div>
-              )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-1.5 overflow-y-auto">
               {searchTab === "alimentos"
@@ -441,6 +490,11 @@ export default function PlanCreator() {
                       </div>
                       {modoPorciones && a.porcion && (
                         <p className="mt-0.5 text-xs text-muted-foreground">{a.porcion}</p>
+                      )}
+                      {modoMacros && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {a.calorias ?? 0} cal · {a.proteinas ?? 0}p · {a.grasas ?? 0}g · {a.carbohidratos ?? 0}c
+                        </p>
                       )}
                     </DraggableItem>
                   ))
@@ -480,59 +534,69 @@ export default function PlanCreator() {
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {dayItems.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-start gap-2 rounded-md border bg-card p-2.5"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium">{getItemName(item)}</p>
-
-                                {/* Alimento: show portions if mode is on */}
-                                {item.tipo === "alimento" && modoPorciones && (
-                                  <Input
-                                    value={item.porcion ?? ""}
-                                    onChange={(e) =>
-                                      updateItem(item.id, { porcion: e.target.value })
-                                    }
-                                    placeholder="Ej. 100g, 1 pieza"
-                                    className="mt-1 h-7 text-xs"
-                                  />
-                                )}
-
-                                {/* Receta: note + toggle */}
-                                {item.tipo === "receta" && (
-                                  <div className="mt-1 space-y-1.5">
-                                    <Input
-                                      value={item.nota_menu ?? ""}
-                                      onChange={(e) =>
-                                        updateItem(item.id, { nota_menu: e.target.value })
-                                      }
-                                      placeholder="Nota para el menú..."
-                                      className="h-7 text-xs"
-                                    />
-                                    <div className="flex items-center gap-2">
-                                      <Switch
-                                        checked={item.incluir_detalle_pdf ?? true}
-                                        onCheckedChange={(c) =>
-                                          updateItem(item.id, { incluir_detalle_pdf: c })
-                                        }
-                                      />
-                                      <span className="text-xs text-muted-foreground">
-                                        Incluir en PDF
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => removeItem(item.id)}
-                                className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          {dayItems.map((item) => {
+                            const macros = item.tipo === "alimento" ? getAlimentoMacros(item.item_id) : null;
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex items-start gap-2 rounded-md border bg-card p-2.5"
                               >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ))}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium">{getItemName(item)}</p>
+
+                                  {/* Alimento: show portions if mode is on */}
+                                  {item.tipo === "alimento" && modoPorciones && (
+                                    <Input
+                                      value={item.porcion ?? ""}
+                                      onChange={(e) =>
+                                        updateItem(item.id, { porcion: e.target.value })
+                                      }
+                                      placeholder="Ej. 100g, 1 pieza"
+                                      className="mt-1 h-7 text-xs"
+                                    />
+                                  )}
+
+                                  {/* Macros for alimentos */}
+                                  {item.tipo === "alimento" && modoMacros && macros && (
+                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                      {macros.cal} cal · {macros.prot}p · {macros.grasas}g · {macros.carbs}c
+                                    </p>
+                                  )}
+
+                                  {/* Receta: note + toggle */}
+                                  {item.tipo === "receta" && (
+                                    <div className="mt-1 space-y-1.5">
+                                      <Input
+                                        value={item.nota_menu ?? ""}
+                                        onChange={(e) =>
+                                          updateItem(item.id, { nota_menu: e.target.value })
+                                        }
+                                        placeholder="Nota para el menú..."
+                                        className="h-7 text-xs"
+                                      />
+                                      <div className="flex items-center gap-2">
+                                        <Switch
+                                          checked={item.incluir_detalle_pdf ?? true}
+                                          onCheckedChange={(c) =>
+                                            updateItem(item.id, { incluir_detalle_pdf: c })
+                                          }
+                                        />
+                                        <span className="text-xs text-muted-foreground">
+                                          Incluir en PDF
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => removeItem(item.id)}
+                                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </DroppableSlot>
