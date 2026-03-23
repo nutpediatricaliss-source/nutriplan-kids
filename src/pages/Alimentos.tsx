@@ -233,6 +233,7 @@ export default function Alimentos() {
                 <TableHead className="text-right">Grasas</TableHead>
                 <TableHead className="text-right">Carb</TableHead>
                 <TableHead className="text-right">Fibra</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -248,6 +249,20 @@ export default function Alimentos() {
                   <TableCell className="text-right tabular-nums">{a.grasas}</TableCell>
                   <TableCell className="text-right tabular-nums">{a.carbohidratos}</TableCell>
                   <TableCell className="text-right tabular-nums">{a.fibra}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setEditingItem(a);
+                        setEditNombre(a.nombre);
+                        setEditGrupo(a.grupo);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -259,6 +274,61 @@ export default function Alimentos() {
           )}
         </div>
       )}
+
+      <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar alimento</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-nombre">Nombre</Label>
+              <Input id="edit-nombre" value={editNombre} onChange={(e) => setEditNombre(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-grupo">Grupo</Label>
+              <Select value={editGrupo} onValueChange={setEditGrupo}>
+                <SelectTrigger id="edit-grupo">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {grupos.map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
+            <Button
+              disabled={saving || !editNombre.trim()}
+              onClick={async () => {
+                if (!editingItem) return;
+                setSaving(true);
+                const { error } = await supabase
+                  .from("alimentos_smae")
+                  .update({ nombre: editNombre.trim(), grupo: editGrupo })
+                  .eq("id", editingItem.id);
+                setSaving(false);
+                if (error) {
+                  toast.error("Error al guardar: " + error.message);
+                } else {
+                  toast.success("Alimento actualizado");
+                  setAlimentos((prev) =>
+                    prev.map((a) =>
+                      a.id === editingItem.id ? { ...a, nombre: editNombre.trim(), grupo: editGrupo } : a
+                    )
+                  );
+                  setEditingItem(null);
+                }
+              }}
+            >
+              {saving ? "Guardando…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
