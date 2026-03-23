@@ -242,7 +242,7 @@ export default function Recetas() {
 
     let inserted = 0;
     for (let i = 0; i < mapped.length; i += 500) {
-      const batch = mapped.slice(i, i + 500);
+      const batch = mapped.slice(i, i + 500) as any[];
       const { error } = await supabase.from("recetas").insert(batch);
       if (!error) inserted += batch.length;
     }
