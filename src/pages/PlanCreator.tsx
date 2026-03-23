@@ -613,7 +613,7 @@ export default function PlanCreator() {
                           )}
                           {modoMacros && (
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                              {a.calorias ?? 0} cal · {a.proteinas ?? 0}p · {a.grasas ?? 0}g · {a.carbohidratos ?? 0}c
+                              {formatMacrosLine(a.calorias ?? 0, a.proteinas ?? 0, a.grasas ?? 0, a.carbohidratos ?? 0)}
                             </p>
                           )}
                         </DraggableItem>
@@ -687,22 +687,35 @@ export default function PlanCreator() {
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium">{getItemName(item)}</p>
 
-                                  {item.tipo === "alimento" && modoPorciones && (
-                                    <Input
-                                      value={item.porcion ?? ""}
-                                      onChange={(e) =>
-                                        updateItem(item.id, { porcion: e.target.value })
-                                      }
-                                      placeholder="Ej. 100g, 1 pieza"
-                                      className="mt-1 h-7 text-xs"
-                                    />
-                                  )}
+                                  {item.tipo === "alimento" && modoPorciones && (() => {
+                                    const baseAlimento = alimentos.find((a) => a.id === item.item_id);
+                                    return (
+                                      <div className="mt-1 space-y-1">
+                                        {baseAlimento?.porcion && (
+                                          <p className="text-[10px] text-muted-foreground">
+                                            Porción base: {baseAlimento.porcion}
+                                          </p>
+                                        )}
+                                        <Input
+                                          value={item.porcion ?? ""}
+                                          onChange={(e) =>
+                                            updateItem(item.id, { porcion: e.target.value })
+                                          }
+                                          placeholder="Cantidad (ej. 2, 1/2)"
+                                          className="h-7 text-xs"
+                                        />
+                                      </div>
+                                    );
+                                  })()}
 
-                                  {item.tipo === "alimento" && modoMacros && macros && (
-                                    <p className="mt-0.5 text-xs text-muted-foreground">
-                                      {macros.cal} cal · {macros.prot}p · {macros.grasas}g · {macros.carbs}c
-                                    </p>
-                                  )}
+                                  {item.tipo === "alimento" && modoMacros && macros && (() => {
+                                    const mult = modoPorciones ? parsePorcionMultiplier(item.porcion) : 1;
+                                    return (
+                                      <p className="mt-0.5 text-xs text-muted-foreground">
+                                        {formatMacrosLine(macros.cal, macros.prot, macros.grasas, macros.carbs, mult)}
+                                      </p>
+                                    );
+                                  })()}
 
                                   {item.tipo === "receta" && (
                                     <div className="mt-1 space-y-1.5">
