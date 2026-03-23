@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -15,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, UtensilsCrossed, Upload, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, UtensilsCrossed, Upload, Image, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Recetas() {
@@ -37,7 +38,10 @@ export default function Recetas() {
     imagen_url: "",
     nota_predeterminada: "",
     incluir_detalle_pdf: true,
+    etiquetas: [] as string[],
   });
+
+  const [tagInput, setTagInput] = useState("");
 
   const fetchRecetas = async () => {
     const { data, error } = await supabase
@@ -60,7 +64,9 @@ export default function Recetas() {
       imagen_url: "",
       nota_predeterminada: "",
       incluir_detalle_pdf: true,
+      etiquetas: [],
     });
+    setTagInput("");
     setEditing(null);
   };
 
@@ -73,8 +79,21 @@ export default function Recetas() {
       imagen_url: r.imagen_url ?? "",
       nota_predeterminada: r.nota_predeterminada ?? "",
       incluir_detalle_pdf: r.incluir_detalle_pdf ?? true,
+      etiquetas: ((r as any).etiquetas as string[]) ?? [],
     });
     setDialogOpen(true);
+  };
+
+  const addTag = () => {
+    const tag = tagInput.trim();
+    if (tag && !form.etiquetas.includes(tag)) {
+      setForm({ ...form, etiquetas: [...form.etiquetas, tag] });
+    }
+    setTagInput("");
+  };
+
+  const removeTag = (idx: number) => {
+    setForm({ ...form, etiquetas: form.etiquetas.filter((_, i) => i !== idx) });
   };
 
   // ─── Image upload ───────────────────────────────────────────────────────
@@ -110,17 +129,19 @@ export default function Recetas() {
     e.preventDefault();
     if (!form.nombre.trim()) return;
 
+    const payload: any = { ...form };
+
     if (editing) {
       const { error } = await supabase
         .from("recetas")
-        .update(form)
+        .update(payload)
         .eq("id", editing.id);
       if (error) toast.error("Error al actualizar");
       else toast.success("Receta actualizada");
     } else {
       const { error } = await supabase
         .from("recetas")
-        .insert({ ...form, user_id: user!.id });
+        .insert({ ...payload, user_id: user!.id });
       if (error) toast.error("Error al crear");
       else toast.success("Receta creada");
     }
@@ -215,6 +236,8 @@ export default function Recetas() {
       incluir_detalle_pdf: "incluir_detalle_pdf",
       incluir_detalle: "incluir_detalle_pdf",
       detalle_pdf: "incluir_detalle_pdf",
+      etiquetas: "etiquetas",
+      tags: "etiquetas",
     };
 
     const mapped = rows
@@ -226,6 +249,9 @@ export default function Recetas() {
             if (mapped_key === "incluir_detalle_pdf") {
               const v = String(val).toLowerCase();
               item[mapped_key] = v === "true" || v === "sí" || v === "si" || v === "1" || v === "yes";
+            } else if (mapped_key === "etiquetas") {
+              const v = String(val).trim();
+              item[mapped_key] = v ? v.split(/[,;|]/).map((t: string) => t.trim()).filter(Boolean) : [];
             } else {
               item[mapped_key] = val;
             }
@@ -252,9 +278,13 @@ export default function Recetas() {
     if (importRef.current) importRef.current.value = "";
   };
 
-  const filtered = recetas.filter((r) =>
-    r.nombre.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = recetas.filter((r) => {
+    const q = search.toLowerCase();
+    if (r.nombre.toLowerCase().includes(q)) return true;
+    const tags = (r as any).etiquetas as string[] | null;
+    if (tags && tags.some((t: string) => t.toLowerCase().includes(q))) return true;
+    return false;
+  });
 
   if (loading) {
     return (
@@ -300,6 +330,38 @@ export default function Recetas() {
                     placeholder="Ej. Sopa de Pollo"
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Etiquetas</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      placeholder="Ej. desayuno, alta proteína"
+                      className="flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addTag();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={addTag}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {form.etiquetas.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {form.etiquetas.map((tag, i) => (
+                        <Badge key={i} variant="secondary" className="gap-1 bg-lavender text-lavender-foreground">
+                          {tag}
+                          <button type="button" onClick={() => removeTag(i)} className="hover:text-destructive">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Ingredientes</Label>
@@ -383,7 +445,7 @@ export default function Recetas() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar recetas..."
+          placeholder="Buscar por nombre o etiqueta..."
           className="pl-9"
         />
       </div>
@@ -414,6 +476,15 @@ export default function Recetas() {
                 <CardTitle className="text-base">{r.nombre}</CardTitle>
                 {r.nota_predeterminada && (
                   <p className="text-xs text-muted-foreground italic">{r.nota_predeterminada}</p>
+                )}
+                {(r as any).etiquetas && ((r as any).etiquetas as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {((r as any).etiquetas as string[]).map((tag, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] bg-lavender text-lavender-foreground">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
                 )}
               </CardHeader>
               <CardContent className="flex gap-2">
