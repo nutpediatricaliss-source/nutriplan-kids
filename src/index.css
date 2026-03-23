@@ -53,6 +53,13 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --peach: 28 93% 90%;
+    --peach-foreground: 28 60% 30%;
+    --sage: 120 25% 92%;
+    --sage-foreground: 120 20% 30%;
+    --lavender: 270 40% 94%;
+    --lavender-foreground: 270 30% 35%;
   }
 
   .dark {
@@ -91,6 +98,13 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --peach: 28 50% 25%;
+    --peach-foreground: 28 93% 90%;
+    --sage: 120 15% 20%;
+    --sage-foreground: 120 25% 85%;
+    --lavender: 270 20% 25%;
+    --lavender-foreground: 270 40% 90%;
   }
 }
 
