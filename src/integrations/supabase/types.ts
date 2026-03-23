@@ -113,6 +113,7 @@ export type Database = {
         Row: {
           created_at: string
           dias: number
+          es_plantilla: boolean | null
           estilo_pdf: string | null
           generalidades: string | null
           id: string
@@ -128,6 +129,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dias?: number
+          es_plantilla?: boolean | null
           estilo_pdf?: string | null
           generalidades?: string | null
           id?: string
@@ -143,6 +145,7 @@ export type Database = {
         Update: {
           created_at?: string
           dias?: number
+          es_plantilla?: boolean | null
           estilo_pdf?: string | null
           generalidades?: string | null
           id?: string
@@ -160,6 +163,7 @@ export type Database = {
       recetas: {
         Row: {
           created_at: string
+          etiquetas: string[] | null
           id: string
           imagen_url: string | null
           incluir_detalle_pdf: boolean | null
@@ -172,6 +176,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          etiquetas?: string[] | null
           id?: string
           imagen_url?: string | null
           incluir_detalle_pdf?: boolean | null
@@ -184,6 +189,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          etiquetas?: string[] | null
           id?: string
           imagen_url?: string | null
           incluir_detalle_pdf?: boolean | null
