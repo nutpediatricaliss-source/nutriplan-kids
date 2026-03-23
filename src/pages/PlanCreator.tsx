@@ -187,7 +187,7 @@ export default function PlanCreator() {
 
   const saveAsTemplate = async () => {
     if (!plan || !user) return;
-    const { error } = await supabase
+    const { data: newTemplate, error } = await supabase
       .from("planes_menu")
       .insert({
         user_id: user.id,
@@ -202,10 +202,10 @@ export default function PlanCreator() {
         estilo_pdf: (plan as any).estilo_pdf,
         es_plantilla: true,
       } as any)
-      .select()
+      .select("id")
       .single();
 
-    if (error) {
+    if (error || !newTemplate) {
       toast.error("Error al guardar plantilla");
       return;
     }
@@ -217,23 +217,12 @@ export default function PlanCreator() {
       .eq("plan_id", plan.id);
 
     if (currentItems && currentItems.length > 0) {
-      const newPlanData = await supabase
-        .from("planes_menu")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("es_plantilla" as any, true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (newPlanData.data) {
-        await supabase.from("plan_items").insert(
-          currentItems.map(({ id: _, created_at: __, ...item }) => ({
-            ...item,
-            plan_id: newPlanData.data.id,
-          }))
-        );
-      }
+      await supabase.from("plan_items").insert(
+        currentItems.map(({ id: _, created_at: __, ...item }) => ({
+          ...item,
+          plan_id: newTemplate.id,
+        }))
+      );
     }
 
     toast.success("Plantilla guardada correctamente");
