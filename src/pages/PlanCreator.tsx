@@ -142,7 +142,7 @@ export default function PlanCreator() {
 
     setPlan(planRes.data);
     setItems(itemsRes.data ?? []);
-    setAlimentos(alimentosRes.data ?? []);
+    setAlimentos(allAlimentos);
     setRecetas(recetasRes.data ?? []);
     setLoading(false);
   }, [id, navigate]);
