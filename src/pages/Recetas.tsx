@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Receta } from "@/lib/types";
@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, UtensilsCrossed } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, UtensilsCrossed, Upload, Image } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Recetas() {
@@ -25,6 +25,10 @@ export default function Recetas() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Receta | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const importRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     nombre: "",
@@ -73,6 +77,35 @@ export default function Recetas() {
     setDialogOpen(true);
   };
 
+  // ─── Image upload ───────────────────────────────────────────────────────
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("receta-imagenes")
+      .upload(path, file);
+
+    if (error) {
+      toast.error("Error al subir imagen");
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("receta-imagenes")
+      .getPublicUrl(path);
+
+    setForm({ ...form, imagen_url: urlData.publicUrl });
+    setUploading(false);
+    toast.success("Imagen subida");
+    if (imageRef.current) imageRef.current.value = "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nombre.trim()) return;
@@ -106,6 +139,119 @@ export default function Recetas() {
     }
   };
 
+  // ─── Bulk import CSV/JSON ──────────────────────────────────────────────
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if ((ch === "," || ch === ";") && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const text = await file.text();
+    let rows: Record<string, any>[] = [];
+
+    if (file.name.endsWith(".json")) {
+      try {
+        const parsed = JSON.parse(text);
+        rows = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        toast.error("JSON inválido");
+        return;
+      }
+    } else {
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) {
+        toast.error("El archivo está vacío o no tiene encabezados");
+        return;
+      }
+      const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-záéíóúñü0-9_]/gi, "_").replace(/_+/g, "_").replace(/^_|_$/g, ""));
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCSVLine(lines[i]);
+        const obj: Record<string, any> = {};
+        headers.forEach((h, idx) => {
+          obj[h] = vals[idx] ?? "";
+        });
+        rows.push(obj);
+      }
+    }
+
+    const fieldMap: Record<string, string> = {
+      nombre: "nombre",
+      name: "nombre",
+      ingredientes: "ingredientes",
+      ingredients: "ingredientes",
+      preparacion: "preparacion",
+      preparación: "preparacion",
+      preparation: "preparacion",
+      instrucciones: "preparacion",
+      imagen_url: "imagen_url",
+      imagen: "imagen_url",
+      image: "imagen_url",
+      image_url: "imagen_url",
+      nota_predeterminada: "nota_predeterminada",
+      nota: "nota_predeterminada",
+      note: "nota_predeterminada",
+      incluir_detalle_pdf: "incluir_detalle_pdf",
+      incluir_detalle: "incluir_detalle_pdf",
+      detalle_pdf: "incluir_detalle_pdf",
+    };
+
+    const mapped = rows
+      .map((row) => {
+        const item: Record<string, any> = { user_id: user.id };
+        for (const [key, val] of Object.entries(row)) {
+          const mapped_key = fieldMap[key.toLowerCase()] || fieldMap[key.toLowerCase().replace(/[^a-záéíóúñü0-9_]/gi, "_")];
+          if (mapped_key) {
+            if (mapped_key === "incluir_detalle_pdf") {
+              const v = String(val).toLowerCase();
+              item[mapped_key] = v === "true" || v === "sí" || v === "si" || v === "1" || v === "yes";
+            } else {
+              item[mapped_key] = val;
+            }
+          }
+        }
+        return item;
+      })
+      .filter((r) => r.nombre && String(r.nombre).trim());
+
+    if (mapped.length === 0) {
+      toast.error("No se encontraron recetas válidas en el archivo");
+      return;
+    }
+
+    let inserted = 0;
+    for (let i = 0; i < mapped.length; i += 500) {
+      const batch = mapped.slice(i, i + 500) as any[];
+      const { error } = await supabase.from("recetas").insert(batch);
+      if (!error) inserted += batch.length;
+    }
+
+    toast.success(`${inserted} recetas importadas`);
+    fetchRecetas();
+    if (importRef.current) importRef.current.value = "";
+  };
+
   const filtered = recetas.filter((r) =>
     r.nombre.toLowerCase().includes(search.toLowerCase())
   );
@@ -122,74 +268,114 @@ export default function Recetas() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Mis Recetas</h1>
-        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nueva Receta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Editar Receta" : "Nueva Receta"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nombre</Label>
-                <Input
-                  value={form.nombre}
-                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                  placeholder="Ej. Sopa de Pollo"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Ingredientes</Label>
-                <Textarea
-                  value={form.ingredientes}
-                  onChange={(e) => setForm({ ...form, ingredientes: e.target.value })}
-                  placeholder="Lista de ingredientes..."
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Preparación</Label>
-                <Textarea
-                  value={form.preparacion}
-                  onChange={(e) => setForm({ ...form, preparacion: e.target.value })}
-                  placeholder="Pasos de preparación..."
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>URL de Imagen</Label>
-                <Input
-                  value={form.imagen_url}
-                  onChange={(e) => setForm({ ...form, imagen_url: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Nota predeterminada para menú</Label>
-                <Input
-                  value={form.nota_predeterminada}
-                  onChange={(e) => setForm({ ...form, nota_predeterminada: e.target.value })}
-                  placeholder="Ej. con 50g de pollo"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Incluir detalle en PDF</Label>
-                <Switch
-                  checked={form.incluir_detalle_pdf}
-                  onCheckedChange={(c) => setForm({ ...form, incluir_detalle_pdf: c })}
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                {editing ? "Guardar Cambios" : "Crear Receta"}
+        <div className="flex gap-2">
+          <input
+            ref={importRef}
+            type="file"
+            accept=".csv,.json"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button variant="outline" className="gap-2" onClick={() => importRef.current?.click()}>
+            <Upload className="h-4 w-4" />
+            Importar CSV/JSON
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nueva Receta
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editing ? "Editar Receta" : "Nueva Receta"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nombre</Label>
+                  <Input
+                    value={form.nombre}
+                    onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                    placeholder="Ej. Sopa de Pollo"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ingredientes</Label>
+                  <Textarea
+                    value={form.ingredientes}
+                    onChange={(e) => setForm({ ...form, ingredientes: e.target.value })}
+                    placeholder="Lista de ingredientes..."
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preparación</Label>
+                  <Textarea
+                    value={form.preparacion}
+                    onChange={(e) => setForm({ ...form, preparacion: e.target.value })}
+                    placeholder="Pasos de preparación..."
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Imagen</Label>
+                  {form.imagen_url && (
+                    <div className="mb-2 aspect-video overflow-hidden rounded-md bg-muted">
+                      <img src={form.imagen_url} alt="Preview" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      ref={imageRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => imageRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      <Image className="h-3.5 w-3.5" />
+                      {uploading ? "Subiendo..." : "Subir foto"}
+                    </Button>
+                    <span className="text-xs text-muted-foreground self-center">o</span>
+                    <Input
+                      value={form.imagen_url}
+                      onChange={(e) => setForm({ ...form, imagen_url: e.target.value })}
+                      placeholder="Pegar URL de imagen..."
+                      className="flex-1 text-xs h-8"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Nota predeterminada para menú</Label>
+                  <Input
+                    value={form.nota_predeterminada}
+                    onChange={(e) => setForm({ ...form, nota_predeterminada: e.target.value })}
+                    placeholder="Ej. con 50g de pollo"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Incluir detalle en PDF</Label>
+                  <Switch
+                    checked={form.incluir_detalle_pdf}
+                    onCheckedChange={(c) => setForm({ ...form, incluir_detalle_pdf: c })}
+                  />
+                </div>
+                <Button type="submit" className="w-full">
+                  {editing ? "Guardar Cambios" : "Crear Receta"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
