@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -51,6 +51,8 @@ import {
   ChevronDown,
   Activity,
   FileText,
+  Save,
+  BookmarkPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,7 +64,7 @@ function DraggableItem({ id, children }: { id: string; children: React.ReactNode
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`cursor-grab rounded-md border bg-card px-3 py-2 text-sm transition-shadow hover:shadow-sm active:cursor-grabbing ${isDragging ? "opacity-50" : ""}`}
+      className={`cursor-grab rounded-lg border border-border/60 bg-card px-3 py-2 text-sm transition-shadow hover:shadow-sm active:cursor-grabbing ${isDragging ? "opacity-50" : ""}`}
     >
       {children}
     </div>
@@ -76,7 +78,7 @@ function DroppableSlot({ id, children }: { id: string; children: React.ReactNode
     <div
       ref={setNodeRef}
       className={`min-h-[4rem] rounded-lg border-2 border-dashed p-3 transition-colors ${
-        isOver ? "border-primary bg-primary/5" : "border-border"
+        isOver ? "border-primary bg-primary/5" : "border-border/40"
       }`}
     >
       {children}
@@ -102,10 +104,9 @@ export default function PlanCreator() {
   const [modoPorciones, setModoPorciones] = useState(false);
   const [modoMacros, setModoMacros] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-
-  // Which week is expanded (0-indexed), default to week containing currentDay
   const [expandedWeek, setExpandedWeek] = useState(0);
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Meal times management
   const [mealTimesDialogOpen, setMealTimesDialogOpen] = useState(false);
@@ -157,7 +158,6 @@ export default function PlanCreator() {
     fetchAll();
   }, [fetchAll]);
 
-  // Keep expanded week in sync with currentDay
   useEffect(() => {
     setExpandedWeek(Math.floor((currentDay - 1) / 7));
   }, [currentDay]);
@@ -171,6 +171,72 @@ export default function PlanCreator() {
       .eq("id", plan.id);
     if (error) toast.error("Error al guardar");
     else setPlan({ ...plan, ...updates } as PlanMenu);
+  };
+
+  const savePlan = async () => {
+    if (!plan) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("planes_menu")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", plan.id);
+    setSaving(false);
+    if (error) toast.error("Error al guardar");
+    else toast.success("Plan guardado correctamente");
+  };
+
+  const saveAsTemplate = async () => {
+    if (!plan || !user) return;
+    const { error } = await supabase
+      .from("planes_menu")
+      .insert({
+        user_id: user.id,
+        nombre_paciente: `[Plantilla] ${plan.nombre_paciente}`,
+        dias: plan.dias,
+        tiempos_comida: plan.tiempos_comida,
+        pautas_extra: plan.pautas_extra,
+        generalidades: (plan as any).generalidades,
+        snacks_colaciones: (plan as any).snacks_colaciones,
+        recomendaciones: (plan as any).recomendaciones,
+        mensaje_agradecimiento: (plan as any).mensaje_agradecimiento,
+        estilo_pdf: (plan as any).estilo_pdf,
+        es_plantilla: true,
+      } as any)
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Error al guardar plantilla");
+      return;
+    }
+
+    // Copy items to the template
+    const { data: currentItems } = await supabase
+      .from("plan_items")
+      .select("*")
+      .eq("plan_id", plan.id);
+
+    if (currentItems && currentItems.length > 0) {
+      const newPlanData = await supabase
+        .from("planes_menu")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("es_plantilla" as any, true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (newPlanData.data) {
+        await supabase.from("plan_items").insert(
+          currentItems.map(({ id: _, created_at: __, ...item }) => ({
+            ...item,
+            plan_id: newPlanData.data.id,
+          }))
+        );
+      }
+    }
+
+    toast.success("Plantilla guardada correctamente");
   };
 
   const tiemposComida = (plan?.tiempos_comida as string[]) ?? [];
@@ -187,10 +253,15 @@ export default function PlanCreator() {
     updatePlan({ tiempos_comida: updated });
   };
 
-  // ─── Search filtering ──────────────────────────────────────────────────
+  // ─── Search filtering (including tags for recipes) ─────────────────────
   const q = searchQuery.toLowerCase();
   const filteredAlimentos = alimentos.filter((a) => a.nombre.toLowerCase().includes(q));
-  const filteredRecetas = recetas.filter((r) => r.nombre.toLowerCase().includes(q));
+  const filteredRecetas = recetas.filter((r) => {
+    if (r.nombre.toLowerCase().includes(q)) return true;
+    const tags = (r as any).etiquetas as string[] | null;
+    if (tags && tags.some((t: string) => t.toLowerCase().includes(q))) return true;
+    return false;
+  });
 
   // ─── Drag and drop ─────────────────────────────────────────────────────
   const handleDragStart = (event: DragStartEvent) => {
@@ -255,7 +326,6 @@ export default function PlanCreator() {
     setItems(items.map((i) => (i.id === itemId ? { ...i, ...updates } : i)));
   };
 
-  // ─── Get item display name ────────────────────────────────────────────
   const getItemName = (item: PlanItem) => {
     if (item.tipo === "alimento") {
       return alimentos.find((a) => a.id === item.item_id)?.nombre ?? "Alimento";
@@ -263,7 +333,6 @@ export default function PlanCreator() {
     return recetas.find((r) => r.id === item.item_id)?.nombre ?? "Receta";
   };
 
-  // ─── Get macros for an alimento ───────────────────────────────────────
   const getAlimentoMacros = (itemId: string) => {
     const a = alimentos.find((al) => al.id === itemId);
     if (!a) return null;
@@ -275,7 +344,6 @@ export default function PlanCreator() {
     };
   };
 
-  // ─── Active drag overlay ──────────────────────────────────────────────
   const getActiveName = () => {
     if (!activeId) return "";
     if (activeId.startsWith("alimento-")) {
@@ -305,7 +373,7 @@ export default function PlanCreator() {
     >
       <div className="space-y-4">
         {/* ─── Top bar ───────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-sage/40 px-4 py-3 border border-sage">
           <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
             <ArrowLeft className="mr-1 h-4 w-4" />
             Volver
@@ -313,13 +381,13 @@ export default function PlanCreator() {
           <Input
             value={plan.nombre_paciente}
             onChange={(e) => updatePlan({ nombre_paciente: e.target.value })}
-            className="w-56 font-semibold"
+            className="w-56 font-semibold bg-background"
           />
           <Select
             value={String(plan.dias)}
             onValueChange={(v) => updatePlan({ dias: parseInt(v) })}
           >
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-36 bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -351,11 +419,7 @@ export default function PlanCreator() {
                       }}
                       className="flex-1"
                     />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeMealTime(i)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => removeMealTime(i)}>
                       <Minus className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -375,15 +439,36 @@ export default function PlanCreator() {
             </DialogContent>
           </Dialog>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1"
-            onClick={() => setPdfDialogOpen(true)}
-          >
-            <FileText className="h-4 w-4" />
-            Generar PDF
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={savePlan}
+              disabled={saving}
+            >
+              <Save className="h-4 w-4" />
+              {saving ? "Guardando..." : "Guardar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={saveAsTemplate}
+            >
+              <BookmarkPlus className="h-4 w-4" />
+              Plantilla
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => setPdfDialogOpen(true)}
+            >
+              <FileText className="h-4 w-4" />
+              PDF
+            </Button>
+          </div>
         </div>
 
         {/* PDF Config Dialog */}
@@ -402,7 +487,8 @@ export default function PlanCreator() {
         />
 
         {/* ─── Day navigation: collapsible weeks ──────────────────────────── */}
-        <div className="space-y-1">
+        <div className="space-y-1 rounded-xl border border-lavender bg-lavender/30 p-3">
+          <p className="text-xs font-semibold text-lavender-foreground mb-2">Navegación por Días</p>
           {Array.from({ length: totalWeeks }, (_, weekIdx) => {
             const weekStart = weekIdx * 7 + 1;
             const weekEnd = Math.min(weekStart + 6, plan.dias);
@@ -415,7 +501,7 @@ export default function PlanCreator() {
                   if (open) setExpandedWeek(weekIdx);
                 }}
               >
-                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-accent transition-colors">
+                <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-lavender-foreground hover:bg-lavender transition-colors">
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-0" : "-rotate-90"}`}
                   />
@@ -435,7 +521,7 @@ export default function PlanCreator() {
                           className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                             currentDay === day
                               ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground hover:bg-accent"
+                              : "bg-background text-muted-foreground hover:bg-accent"
                           }`}
                         >
                           Día {day}
@@ -449,110 +535,129 @@ export default function PlanCreator() {
           })}
         </div>
 
-        {/* ─── Main layout: Search panel + Canvas ────────────────────────────── */}
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
-          {/* Search Panel */}
-          <Card className="h-fit lg:sticky lg:top-20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Buscador</CardTitle>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setSearchTab("alimentos")}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    searchTab === "alimentos"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  Alimentos
-                </button>
-                <button
-                  onClick={() => setSearchTab("recetas")}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    searchTab === "recetas"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  Recetas
-                </button>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar..."
-                  className="h-8 pl-8 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                {searchTab === "alimentos" && (
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Modo Porciones</Label>
-                    <Switch
-                      checked={modoPorciones}
-                      onCheckedChange={setModoPorciones}
+        {/* ─── Main layout: Sticky Sidebar (1/3) + Canvas (2/3) ──────────── */}
+        <div className="flex gap-4">
+          {/* Search Sidebar - sticky, 1/3 width */}
+          <div className="w-1/3 max-w-sm shrink-0">
+            <div className="sticky top-4 space-y-3">
+              <Card className="border-sage bg-sage/30">
+                <CardHeader className="pb-3 space-y-3">
+                  <CardTitle className="text-sm font-semibold text-sage-foreground">Buscador</CardTitle>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setSearchTab("alimentos")}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                        searchTab === "alimentos"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      Alimentos
+                    </button>
+                    <button
+                      onClick={() => setSearchTab("recetas")}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                        searchTab === "recetas"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      Recetas
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={searchTab === "recetas" ? "Buscar por nombre o etiqueta..." : "Buscar..."}
+                      className="h-8 pl-8 text-sm bg-background"
                     />
                   </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs flex items-center gap-1">
-                    <Activity className="h-3 w-3" />
-                    Mostrar Macros
-                  </Label>
-                  <Switch
-                    checked={modoMacros}
-                    onCheckedChange={setModoMacros}
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-1.5 overflow-y-auto">
-              {searchTab === "alimentos"
-                ? filteredAlimentos.slice(0, 3).map((a) => (
-                    <DraggableItem key={a.id} id={`alimento-${a.id}`}>
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{a.nombre}</span>
+                  <div className="space-y-1.5">
+                    {searchTab === "alimentos" && (
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Modo Porciones</Label>
+                        <Switch checked={modoPorciones} onCheckedChange={setModoPorciones} />
                       </div>
-                      {modoPorciones && a.porcion && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{a.porcion}</p>
-                      )}
-                      {modoMacros && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {a.calorias ?? 0} cal · {a.proteinas ?? 0}p · {a.grasas ?? 0}g · {a.carbohidratos ?? 0}c
-                        </p>
-                      )}
-                    </DraggableItem>
-                  ))
-                : filteredRecetas.slice(0, 3).map((r) => (
-                    <DraggableItem key={r.id} id={`receta-${r.id}`}>
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{r.nombre}</span>
-                      </div>
-                    </DraggableItem>
-                  ))}
-              {searchTab === "alimentos" && filteredAlimentos.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p>
-              )}
-              {searchTab === "recetas" && filteredRecetas.length === 0 && (
-                <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p>
-              )}
-            </CardContent>
-          </Card>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs flex items-center gap-1">
+                        <Activity className="h-3 w-3" />
+                        Mostrar Macros
+                      </Label>
+                      <Switch checked={modoMacros} onCheckedChange={setModoMacros} />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-1.5 max-h-[60vh] overflow-y-auto">
+                  {searchTab === "alimentos"
+                    ? filteredAlimentos.slice(0, 8).map((a) => (
+                        <DraggableItem key={a.id} id={`alimento-${a.id}`}>
+                          <div className="flex items-center gap-2">
+                            <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-sm">{a.nombre}</span>
+                          </div>
+                          {modoPorciones && a.porcion && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">{a.porcion}</p>
+                          )}
+                          {modoMacros && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {a.calorias ?? 0} cal · {a.proteinas ?? 0}p · {a.grasas ?? 0}g · {a.carbohidratos ?? 0}c
+                            </p>
+                          )}
+                        </DraggableItem>
+                      ))
+                    : filteredRecetas.slice(0, 8).map((r) => (
+                        <DraggableItem key={r.id} id={`receta-${r.id}`}>
+                          <div className="flex items-center gap-2">
+                            <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            {r.imagen_url && (
+                              <img
+                                src={r.imagen_url}
+                                alt={r.nombre}
+                                className="h-8 w-8 rounded object-cover shrink-0"
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-sm">{r.nombre}</span>
+                              {(r as any).etiquetas && ((r as any).etiquetas as string[]).length > 0 && (
+                                <div className="flex flex-wrap gap-0.5 mt-0.5">
+                                  {((r as any).etiquetas as string[]).slice(0, 3).map((tag, i) => (
+                                    <Badge key={i} variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-lavender text-lavender-foreground">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </DraggableItem>
+                      ))}
+                  {searchTab === "alimentos" && filteredAlimentos.length === 0 && (
+                    <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p>
+                  )}
+                  {searchTab === "recetas" && filteredRecetas.length === 0 && (
+                    <p className="py-4 text-center text-xs text-muted-foreground">Sin resultados</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
 
-          {/* Canvas */}
-          <div className="space-y-4">
+          {/* Canvas - 2/3 width */}
+          <div className="flex-1 space-y-4">
+            <p className="text-xs font-semibold text-muted-foreground">
+              Día {currentDay} — Semana {Math.ceil(currentDay / 7)}
+            </p>
             {tiemposComida.map((tiempo) => {
               const dayItems = items.filter(
                 (i) => i.dia === currentDay && i.tiempo_comida === tiempo
               );
               return (
-                <Card key={tiempo}>
+                <Card key={tiempo} className="border-peach/60 bg-peach/20">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold">{tiempo}</CardTitle>
+                    <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <DroppableSlot id={`slot-${tiempo}`}>
@@ -567,12 +672,11 @@ export default function PlanCreator() {
                             return (
                               <div
                                 key={item.id}
-                                className="flex items-start gap-2 rounded-md border bg-card p-2.5"
+                                className="flex items-start gap-2 rounded-lg border bg-background p-2.5"
                               >
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium">{getItemName(item)}</p>
 
-                                  {/* Alimento: show portions if mode is on */}
                                   {item.tipo === "alimento" && modoPorciones && (
                                     <Input
                                       value={item.porcion ?? ""}
@@ -584,14 +688,12 @@ export default function PlanCreator() {
                                     />
                                   )}
 
-                                  {/* Macros for alimentos */}
                                   {item.tipo === "alimento" && modoMacros && macros && (
                                     <p className="mt-0.5 text-xs text-muted-foreground">
                                       {macros.cal} cal · {macros.prot}p · {macros.grasas}g · {macros.carbs}c
                                     </p>
                                   )}
 
-                                  {/* Receta: note + toggle */}
                                   {item.tipo === "receta" && (
                                     <div className="mt-1 space-y-1.5">
                                       <Input
