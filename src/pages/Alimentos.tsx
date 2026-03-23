@@ -52,6 +52,25 @@ export default function Alimentos() {
     return matchSearch && matchGrupo;
   });
 
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -62,10 +81,10 @@ export default function Alimentos() {
     if (file.name.endsWith(".json")) {
       records = JSON.parse(text);
     } else if (file.name.endsWith(".csv")) {
-      const lines = text.split("\n").filter(Boolean);
-      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const lines = text.split("\n").filter((l) => l.trim().length > 0);
+      const headers = parseCSVLine(lines[0]).map((h) => h.replace(/^\uFEFF/, '').trim());
       records = lines.slice(1).map((line) => {
-        const values = line.split(",").map((v) => v.trim());
+        const values = parseCSVLine(line);
         const obj: any = {};
         headers.forEach((h, i) => {
           obj[h] = values[i] ?? "";
@@ -79,23 +98,42 @@ export default function Alimentos() {
       return;
     }
 
-    const toInsert = records.map((r) => ({
-      nombre: r.nombre || r.name || "",
-      grupo: r.grupo || r.group || "General",
-      porcion: r.porcion || r.portion || null,
-      calorias: parseFloat(r.calorias || r.calories || 0) || 0,
-      proteinas: parseFloat(r.proteinas || r.protein || 0) || 0,
-      grasas: parseFloat(r.grasas || r.fat || 0) || 0,
-      carbohidratos: parseFloat(r.carbohidratos || r.carbs || 0) || 0,
-      fibra: parseFloat(r.fibra || r.fiber || 0) || 0,
-      user_id: user!.id,
-    }));
+    // Map CSV columns to database columns
+    const toInsert = records
+      .filter((r) => (r["Alimento"] || r["nombre"] || "").trim().length > 0)
+      .map((r) => ({
+        nombre: (r["Alimento"] || r["nombre"] || r["name"] || "").trim(),
+        grupo: (r["Grupo"] || r["grupo"] || r["group"] || "General").trim(),
+        porcion: r["Cantidad"] && r["Unidad"]
+          ? `${r["Cantidad"]} ${r["Unidad"]}`
+          : r["porcion"] || r["portion"] || null,
+        calorias: parseFloat(r["Energia"] || r["Energía"] || r["calorias"] || r["calories"] || 0) || 0,
+        proteinas: parseFloat(r["Proteina"] || r["Proteína"] || r["proteinas"] || r["protein"] || 0) || 0,
+        grasas: parseFloat(r["Lipidos"] || r["Lípidos"] || r["grasas"] || r["fat"] || 0) || 0,
+        carbohidratos: parseFloat(r["HidratosCarbono"] || r["Hidratos_de_carbono"] || r["carbohidratos"] || r["carbs"] || 0) || 0,
+        fibra: parseFloat(r["Fibra"] || r["fibra"] || r["fiber"] || 0) || 0,
+        user_id: user!.id,
+      }));
 
-    const { error } = await supabase.from("alimentos_smae").insert(toInsert);
-    if (error) {
-      toast.error("Error al importar: " + error.message);
-    } else {
-      toast.success(`${toInsert.length} alimentos importados`);
+    if (toInsert.length === 0) {
+      toast.error("No se encontraron alimentos válidos en el archivo");
+      return;
+    }
+
+    // Insert in batches of 500
+    let inserted = 0;
+    for (let i = 0; i < toInsert.length; i += 500) {
+      const batch = toInsert.slice(i, i + 500);
+      const { error } = await supabase.from("alimentos_smae").insert(batch);
+      if (error) {
+        toast.error("Error al importar: " + error.message);
+        break;
+      }
+      inserted += batch.length;
+    }
+
+    if (inserted > 0) {
+      toast.success(`${inserted} alimentos importados`);
       fetchAlimentos();
     }
 
