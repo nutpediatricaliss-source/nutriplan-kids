@@ -19,7 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Search, Apple } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Upload, Search, Apple, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -30,6 +38,10 @@ export default function Alimentos() {
   const [grupoFilter, setGrupoFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [editingItem, setEditingItem] = useState<Alimento | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editGrupo, setEditGrupo] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const fetchAlimentos = async () => {
     const { data, error } = await supabase
