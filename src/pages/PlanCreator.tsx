@@ -354,23 +354,37 @@ export default function PlanCreator() {
           </Dialog>
         </div>
 
-        {/* ─── Day navigation ────────────────────────────────────────────────── */}
-        <div className="overflow-x-auto">
-          <div className="flex gap-1">
-            {Array.from({ length: plan.dias }, (_, i) => i + 1).map((day) => (
-              <button
-                key={day}
-                onClick={() => setCurrentDay(day)}
-                className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  currentDay === day
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                Día {day}
-              </button>
-            ))}
-          </div>
+        {/* ─── Day navigation by weeks ─────────────────────────────────────── */}
+        <div className="space-y-2">
+          {Array.from({ length: Math.ceil(plan.dias / 7) }, (_, weekIdx) => {
+            const weekStart = weekIdx * 7 + 1;
+            const weekEnd = Math.min(weekStart + 6, plan.dias);
+            return (
+              <div key={weekIdx}>
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                  Semana {weekIdx + 1}
+                </p>
+                <div className="flex gap-1">
+                  {Array.from({ length: weekEnd - weekStart + 1 }, (_, i) => {
+                    const day = weekStart + i;
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => setCurrentDay(day)}
+                        className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                          currentDay === day
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-accent"
+                        }`}
+                      >
+                        Día {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* ─── Main layout: Search panel + Canvas ────────────────────────────── */}
@@ -420,9 +434,9 @@ export default function PlanCreator() {
                 </div>
               )}
             </CardHeader>
-            <CardContent className="max-h-[50vh] space-y-1.5 overflow-y-auto">
+            <CardContent className="space-y-1.5 overflow-y-auto">
               {searchTab === "alimentos"
-                ? filteredAlimentos.slice(0, 50).map((a) => (
+                ? filteredAlimentos.slice(0, 3).map((a) => (
                     <DraggableItem key={a.id} id={`alimento-${a.id}`}>
                       <div className="flex items-center gap-2">
                         <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -433,7 +447,7 @@ export default function PlanCreator() {
                       )}
                     </DraggableItem>
                   ))
-                : filteredRecetas.slice(0, 50).map((r) => (
+                : filteredRecetas.slice(0, 3).map((r) => (
                     <DraggableItem key={r.id} id={`receta-${r.id}`}>
                       <div className="flex items-center gap-2">
                         <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
