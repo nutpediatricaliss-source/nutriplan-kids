@@ -110,10 +110,27 @@ export default function PlanCreator() {
   // ─── Fetch data ─────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     if (!id) return;
-    const [planRes, itemsRes, alimentosRes, recetasRes] = await Promise.all([
+    const fetchAllAlimentos = async () => {
+      let all: any[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("alimentos_smae")
+          .select("*")
+          .order("nombre")
+          .range(from, from + PAGE - 1);
+        if (error) break;
+        all = all.concat(data ?? []);
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
+    };
+    const [planRes, itemsRes, allAlimentos, recetasRes] = await Promise.all([
       supabase.from("planes_menu").select("*").eq("id", id).single(),
       supabase.from("plan_items").select("*").eq("plan_id", id).order("orden"),
-      supabase.from("alimentos_smae").select("*").order("nombre"),
+      fetchAllAlimentos(),
       supabase.from("recetas").select("*").order("nombre"),
     ]);
 
@@ -125,7 +142,7 @@ export default function PlanCreator() {
 
     setPlan(planRes.data);
     setItems(itemsRes.data ?? []);
-    setAlimentos(alimentosRes.data ?? []);
+    setAlimentos(allAlimentos);
     setRecetas(recetasRes.data ?? []);
     setLoading(false);
   }, [id, navigate]);

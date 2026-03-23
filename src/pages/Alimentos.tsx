@@ -44,11 +44,21 @@ export default function Alimentos() {
   const [saving, setSaving] = useState(false);
 
   const fetchAlimentos = async () => {
-    const { data, error } = await supabase
-      .from("alimentos_smae")
-      .select("*")
-      .order("nombre");
-    if (!error) setAlimentos(data ?? []);
+    let all: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("alimentos_smae")
+        .select("*")
+        .order("nombre")
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      all = all.concat(data ?? []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    setAlimentos(all);
     setLoading(false);
   };
 
