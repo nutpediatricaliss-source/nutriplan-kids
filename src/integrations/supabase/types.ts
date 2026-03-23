@@ -14,7 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alimentos_smae: {
+        Row: {
+          calorias: number | null
+          carbohidratos: number | null
+          created_at: string
+          fibra: number | null
+          grasas: number | null
+          grupo: string
+          id: string
+          nombre: string
+          porcion: string | null
+          proteinas: number | null
+          updated_at: string
+        }
+        Insert: {
+          calorias?: number | null
+          carbohidratos?: number | null
+          created_at?: string
+          fibra?: number | null
+          grasas?: number | null
+          grupo: string
+          id?: string
+          nombre: string
+          porcion?: string | null
+          proteinas?: number | null
+          updated_at?: string
+        }
+        Update: {
+          calorias?: number | null
+          carbohidratos?: number | null
+          created_at?: string
+          fibra?: number | null
+          grasas?: number | null
+          grupo?: string
+          id?: string
+          nombre?: string
+          porcion?: string | null
+          proteinas?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      plan_items: {
+        Row: {
+          created_at: string
+          dia: number
+          id: string
+          incluir_detalle_pdf: boolean | null
+          item_id: string
+          nota_menu: string | null
+          orden: number
+          plan_id: string
+          porcion: string | null
+          tiempo_comida: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          dia: number
+          id?: string
+          incluir_detalle_pdf?: boolean | null
+          item_id: string
+          nota_menu?: string | null
+          orden?: number
+          plan_id: string
+          porcion?: string | null
+          tiempo_comida: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          dia?: number
+          id?: string
+          incluir_detalle_pdf?: boolean | null
+          item_id?: string
+          nota_menu?: string | null
+          orden?: number
+          plan_id?: string
+          porcion?: string | null
+          tiempo_comida?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "planes_menu"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planes_menu: {
+        Row: {
+          created_at: string
+          dias: number
+          id: string
+          nombre_paciente: string
+          pautas_extra: string | null
+          tiempos_comida: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dias?: number
+          id?: string
+          nombre_paciente: string
+          pautas_extra?: string | null
+          tiempos_comida?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dias?: number
+          id?: string
+          nombre_paciente?: string
+          pautas_extra?: string | null
+          tiempos_comida?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recetas: {
+        Row: {
+          created_at: string
+          id: string
+          imagen_url: string | null
+          incluir_detalle_pdf: boolean | null
+          ingredientes: string | null
+          nombre: string
+          nota_predeterminada: string | null
+          preparacion: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          imagen_url?: string | null
+          incluir_detalle_pdf?: boolean | null
+          ingredientes?: string | null
+          nombre: string
+          nota_predeterminada?: string | null
+          preparacion?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          imagen_url?: string | null
+          incluir_detalle_pdf?: boolean | null
+          ingredientes?: string | null
+          nombre?: string
+          nota_predeterminada?: string | null
+          preparacion?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
