@@ -27,6 +27,7 @@ export type Database = {
           porcion: string | null
           proteinas: number | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           calorias?: number | null
@@ -40,6 +41,7 @@ export type Database = {
           porcion?: string | null
           proteinas?: number | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           calorias?: number | null
@@ -53,6 +55,7 @@ export type Database = {
           porcion?: string | null
           proteinas?: number | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
