@@ -1,52 +1,59 @@
 
 
-# Plan: Mejoras al PlanCreator — Plantillas, Sidebar Sticky y Diseño Visual
+# Plan: Porciones editables con cálculo de macros
 
-## Cambios Solicitados
+## Resumen
+Mejorar el campo de porciones en el canvas para que muestre la porción base del alimento (desde la DB) y permita escribir un multiplicador/cantidad personalizada. Los macros se calcularán proporcionalmente a la porción indicada. Además, formatear los macros con números redondeados y formato legible.
 
-### 1. Guardar menús y sistema de plantillas
-- Agregar botón "Guardar" explícito en la barra superior del PlanCreator que guarde todos los campos del plan con feedback visual (toast de confirmación)
-- Agregar botón "Guardar como Plantilla" que marca el plan como plantilla reutilizable
-- En el Dashboard, mostrar sección separada de "Mis Plantillas" con opción de "Crear plan desde esta plantilla" (duplica la plantilla como plan nuevo)
-- **Migración SQL**: agregar columna `es_plantilla boolean default false` a `planes_menu`
+## Cambios en `src/pages/PlanCreator.tsx`
 
-### 2. Buscador lateral sticky (1/3 del ancho)
-- Reestructurar el layout del PlanCreator: el panel de búsqueda pasa a ser un sidebar fijo a la izquierda con `position: sticky`, `max-width: 33%`, y scroll independiente
-- En el tab de Recetas del buscador, mostrar la imagen thumbnail junto al nombre de cada receta (ya que hay más espacio)
-- Aumentar el límite de resultados visibles (de 3 a ~6-8) aprovechando la altura completa del sidebar
-- Mover los toggles (Porciones, Macros) debajo del campo de búsqueda de forma compacta
+### 1. Porción editable con referencia a la porción base
+Cuando Modo Porciones está ON, cada alimento en el canvas mostrará:
+- La porción base del alimento (ej. "1 cdita") como texto de referencia
+- Un campo editable donde el usuario escribe la cantidad deseada (ej. "2", "0.5", "1/2")
+- Se usará el campo `porcion` del `plan_item` para guardar el texto libre que el usuario escriba
 
-### 3. Búsqueda de recetas por etiquetas
-- **Migración SQL**: agregar columna `etiquetas text[]` (array de texto) a la tabla `recetas`
-- En la página de Recetas (CRUD), agregar campo de etiquetas en el formulario (input con chips/tags)
-- En el buscador del PlanCreator, filtrar recetas tanto por nombre como por etiquetas
-- Mostrar las etiquetas como badges pequeños debajo del nombre de cada receta en los resultados
+### 2. Cálculo proporcional de macros
+- Al escribir un número en el campo de porción (ej. "2"), los macros se multiplican por ese factor
+- La función `getAlimentoMacros` se actualizará para aceptar un multiplicador
+- Si el campo contiene texto no numérico o está vacío, se muestran los macros base (×1)
+- Fracciones como "1/2" se parsearán como 0.5
 
-### 4. Paleta de colores pastel para la interfaz
-Agregar CSS variables y aplicar colores pastel sobrios que complementen la paleta existente:
-- **Melocotón suave** `#fde8d0` — fondo de las cards de tiempos de comida en el canvas
-- **Verde salvia claro** `#e8f0e4` — fondo del panel de búsqueda lateral
-- **Lavanda suave** `#ede8f5` — badges de etiquetas y tabs activos
-- Aplicar bordes y fondos sutiles diferenciados para que cada sección sea visualmente distinguible (buscador vs canvas vs navegación de días)
+### 3. Formato de macros
+- **Calorías**: número redondeado sin decimales (ej. `85 Cal`)
+- **Proteínas**: máximo 1 decimal + espacio + letra mayúscula (ej. `5.2 P`)
+- **Grasas**: mismo formato (ej. `3.1 G`)
+- **Carbohidratos**: mismo formato (ej. `12 C`)
+- Aplicar este formato tanto en el **sidebar de búsqueda** como en el **canvas del menú**
 
-## Archivos a Modificar
-- **`src/pages/PlanCreator.tsx`**: Layout sidebar sticky, botón guardar, colores
-- **`src/pages/Dashboard.tsx`**: Sección de plantillas, crear plan desde plantilla
-- **`src/pages/Recetas.tsx`**: Campo de etiquetas en formulario
-- **`src/index.css`**: Variables CSS para los nuevos colores pastel
+## Detalle técnico
 
-## Migración SQL
-```sql
--- Plantillas
-ALTER TABLE planes_menu ADD COLUMN es_plantilla boolean DEFAULT false;
-
--- Etiquetas para recetas
-ALTER TABLE recetas ADD COLUMN etiquetas text[] DEFAULT '{}';
+### Función de parseo de porción
+```typescript
+function parsePorcionMultiplier(porcion: string): number {
+  if (!porcion?.trim()) return 1;
+  // Handle fractions like "1/2"
+  if (porcion.includes("/")) {
+    const [num, den] = porcion.split("/").map(Number);
+    if (num && den) return num / den;
+  }
+  const n = parseFloat(porcion);
+  return isNaN(n) ? 1 : n;
+}
 ```
 
-## Flujo de Plantillas
-1. Usuario arma un menú completo
-2. Hace clic en "Guardar como Plantilla" → se marca `es_plantilla = true`
-3. En el Dashboard aparece en sección "Mis Plantillas"
-4. Al hacer clic en "Usar Plantilla" → se duplica como plan nuevo con `es_plantilla = false`
+### Función de formato de macros
+```typescript
+function formatMacros(cal, prot, grasas, carbs, mult = 1) {
+  return `${Math.round(cal * mult)} Cal · ${(prot * mult).toFixed(1).replace(/\.0$/, '')} P · ${(grasas * mult).toFixed(1).replace(/\.0$/, '')} G · ${(carbs * mult).toFixed(1).replace(/\.0$/, '')} C`;
+}
+```
+
+### UI del campo de porción en el canvas
+- Mostrar label con la porción base: `"Porción base: 1 cdita"`
+- Input editable: placeholder `"Cantidad (ej. 2, 1/2)"`
+- Debajo, macros calculados con el multiplicador
+
+### Archivos a modificar
+- **`src/pages/PlanCreator.tsx`** — único archivo afectado
 
