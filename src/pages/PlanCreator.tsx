@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { PlanMenu, PlanItem, Alimento, Receta } from "@/lib/types";
+import PdfConfigDialog from "@/components/PdfConfigDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,7 @@ import {
   Settings,
   ChevronDown,
   Activity,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -103,6 +105,7 @@ export default function PlanCreator() {
 
   // Which week is expanded (0-indexed), default to week containing currentDay
   const [expandedWeek, setExpandedWeek] = useState(0);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
 
   // Meal times management
   const [mealTimesDialogOpen, setMealTimesDialogOpen] = useState(false);
@@ -371,7 +374,32 @@ export default function PlanCreator() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={() => setPdfDialogOpen(true)}
+          >
+            <FileText className="h-4 w-4" />
+            Generar PDF
+          </Button>
         </div>
+
+        {/* PDF Config Dialog */}
+        <PdfConfigDialog
+          open={pdfDialogOpen}
+          onOpenChange={setPdfDialogOpen}
+          data={{ plan, items, alimentos, recetas }}
+          savedConfig={{
+            generalidades: (plan as any).generalidades ?? "",
+            snacksColaciones: (plan as any).snacks_colaciones ?? "",
+            recomendaciones: (plan as any).recomendaciones ?? "",
+            mensajeAgradecimiento: (plan as any).mensaje_agradecimiento ?? "",
+            estiloPdf: (plan as any).estilo_pdf ?? "lista",
+          }}
+          onSaveConfig={(cfg) => updatePlan(cfg as any)}
+        />
 
         {/* ─── Day navigation: collapsible weeks ──────────────────────────── */}
         <div className="space-y-1">

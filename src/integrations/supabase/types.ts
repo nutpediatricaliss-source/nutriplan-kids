@@ -113,9 +113,14 @@ export type Database = {
         Row: {
           created_at: string
           dias: number
+          estilo_pdf: string | null
+          generalidades: string | null
           id: string
+          mensaje_agradecimiento: string | null
           nombre_paciente: string
           pautas_extra: string | null
+          recomendaciones: string | null
+          snacks_colaciones: string | null
           tiempos_comida: Json
           updated_at: string
           user_id: string
@@ -123,9 +128,14 @@ export type Database = {
         Insert: {
           created_at?: string
           dias?: number
+          estilo_pdf?: string | null
+          generalidades?: string | null
           id?: string
+          mensaje_agradecimiento?: string | null
           nombre_paciente: string
           pautas_extra?: string | null
+          recomendaciones?: string | null
+          snacks_colaciones?: string | null
           tiempos_comida?: Json
           updated_at?: string
           user_id: string
@@ -133,9 +143,14 @@ export type Database = {
         Update: {
           created_at?: string
           dias?: number
+          estilo_pdf?: string | null
+          generalidades?: string | null
           id?: string
+          mensaje_agradecimiento?: string | null
           nombre_paciente?: string
           pautas_extra?: string | null
+          recomendaciones?: string | null
+          snacks_colaciones?: string | null
           tiempos_comida?: Json
           updated_at?: string
           user_id?: string
