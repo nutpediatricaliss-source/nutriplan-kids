@@ -56,6 +56,27 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+function parsePorcionMultiplier(porcion: string | null | undefined): number {
+  if (!porcion?.trim()) return 1;
+  const trimmed = porcion.trim();
+  if (trimmed.includes("/")) {
+    const parts = trimmed.split("/").map(Number);
+    if (parts.length === 2 && parts[0] && parts[1]) return parts[0] / parts[1];
+  }
+  const n = parseFloat(trimmed);
+  return isNaN(n) ? 1 : n;
+}
+
+function formatMacroValue(value: number): string {
+  const fixed = value.toFixed(1);
+  return fixed.replace(/\.0$/, "");
+}
+
+function formatMacrosLine(cal: number, prot: number, grasas: number, carbs: number, mult: number = 1): string {
+  return `${Math.round(cal * mult)} Cal · ${formatMacroValue(prot * mult)} P · ${formatMacroValue(grasas * mult)} G · ${formatMacroValue(carbs * mult)} C`;
+}
+
 // ─── Draggable search item ──────────────────────────────────────────────────
 function DraggableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id });
