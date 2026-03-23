@@ -337,7 +337,7 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
         const day = weekStart + i;
         const x = tableX + tiempoColW + i * colW;
 
-        doc.setFillColor(t % 2 === 0 ? [...COLORS.white] : [...COLORS.creamSoft]);
+        if (t % 2 === 0) { doc.setFillColor(...COLORS.white); } else { doc.setFillColor(...COLORS.creamSoft); }
         doc.rect(x, rowY, colW, rowH, "F");
 
         const dayItems = data.items.filter(
