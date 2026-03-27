@@ -486,6 +486,32 @@ export default function Recetas() {
                     ))}
                   </div>
                 )}
+                {r.ingredientes && (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Ingredientes:</p>
+                    <ul className="space-y-0.5">
+                      {(r.ingredientes.includes(";")
+                        ? r.ingredientes.split(";").map(s => s.trim()).filter(Boolean)
+                        : r.ingredientes.split("\n").filter(Boolean)
+                      ).map((ing, i) => (
+                        <li key={i} className="text-xs text-muted-foreground">• {ing}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {r.preparacion && (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Preparación:</p>
+                    <ol className="space-y-1">
+                      {(r.preparacion.includes(". ")
+                        ? r.preparacion.split(/\.\s+/).map(s => s.trim()).filter(Boolean)
+                        : r.preparacion.split("\n").filter(Boolean)
+                      ).map((step, i) => (
+                        <li key={i} className="text-xs text-muted-foreground">{i + 1}. {step}</li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => openEdit(r)}>
