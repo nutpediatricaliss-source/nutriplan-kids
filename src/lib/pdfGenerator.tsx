@@ -61,6 +61,9 @@ Font.register({
   ],
 });
 
+// Prevent hyphenation crashes
+Font.registerHyphenationCallback((word) => [word]);
+
 // ─── Shared styles ─────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   pagePortrait: {
@@ -578,10 +581,22 @@ function PlanDocument({ data, config, logoSrc }: { data: PdfData; config: PdfCon
 
 // ─── Main export ───────────────────────────────────────────────────────────
 export async function generatePdf(data: PdfData, config: PdfConfig) {
-  const logoSrc = "/images/logo.png";
+  // Convert logo to data URL so @react-pdf/renderer can use it
+  let logoSrc = "/images/logo.png";
+  try {
+    const response = await fetch("/images/logo.png");
+    const blob = await response.blob();
+    logoSrc = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn("Could not load logo, using fallback path", e);
+  }
 
-  const blob = await pdf(<PlanDocument data={data} config={config} logoSrc={logoSrc} />).toBlob();
-  const url = URL.createObjectURL(blob);
+  const pdfBlob = await pdf(<PlanDocument data={data} config={config} logoSrc={logoSrc} />).toBlob();
+  const url = URL.createObjectURL(pdfBlob);
   const a = document.createElement("a");
   a.href = url;
   a.download = `Plan_Nutricional_${data.plan.nombre_paciente.replace(/\s+/g, "_")}.pdf`;
