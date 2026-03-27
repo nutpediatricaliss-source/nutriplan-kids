@@ -727,10 +727,10 @@ export default function PlanCreator() {
                                             Porción base: {baseAlimento.porcion}
                                           </p>
                                         )}
-                                        <Input
+                                        <DebouncedInput
                                           value={item.porcion ?? ""}
-                                          onChange={(e) =>
-                                            updateItem(item.id, { porcion: e.target.value })
+                                          onChange={(v) =>
+                                            updateItem(item.id, { porcion: v })
                                           }
                                           placeholder="Cantidad (ej. 2, 1/2)"
                                           className="h-7 text-xs"
@@ -750,10 +750,10 @@ export default function PlanCreator() {
 
                                   {item.tipo === "receta" && (
                                     <div className="mt-1 space-y-1.5">
-                                      <Input
+                                      <DebouncedInput
                                         value={item.nota_menu ?? ""}
-                                        onChange={(e) =>
-                                          updateItem(item.id, { nota_menu: e.target.value })
+                                        onChange={(v) =>
+                                          updateItem(item.id, { nota_menu: v })
                                         }
                                         placeholder="Nota para el menú..."
                                         className="h-7 text-xs"
