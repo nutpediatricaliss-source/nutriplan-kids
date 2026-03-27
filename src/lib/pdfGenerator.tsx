@@ -593,7 +593,7 @@ export async function generatePdf(data: PdfData, config: PdfConfig) {
   }
 
   const pdfBlob = await pdf(<PlanDocument data={data} config={config} logoSrc={logoSrc} />).toBlob();
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(pdfBlob);
   const a = document.createElement("a");
   a.href = url;
   a.download = `Plan_Nutricional_${data.plan.nombre_paciente.replace(/\s+/g, "_")}.pdf`;
