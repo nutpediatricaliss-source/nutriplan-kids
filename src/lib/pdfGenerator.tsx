@@ -61,6 +61,9 @@ Font.register({
   ],
 });
 
+// Prevent hyphenation crashes
+Font.registerHyphenationCallback((word) => [word]);
+
 // ─── Shared styles ─────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   pagePortrait: {
