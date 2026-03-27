@@ -491,7 +491,9 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       doc.setFontSize(9);
       doc.setTextColor(...COLORS.black);
 
-      const ingredients = receta.ingredientes.split("\n").filter(Boolean);
+      const ingredients = receta.ingredientes.includes(";")
+        ? receta.ingredientes.split(";").map(s => s.trim()).filter(Boolean)
+        : receta.ingredientes.split("\n").filter(Boolean);
       for (const ing of ingredients) {
         const lines = splitTextToLines(doc, `• ${ing.trim()}`, textMaxW);
         for (const l of lines) {
@@ -502,7 +504,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
             y = 30;
           }
           doc.text(l, MARGIN + 4, y);
-          y += 4.5;
+          y += 5.5;
         }
       }
       y += 4;
@@ -520,7 +522,9 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       doc.setFontSize(9);
       doc.setTextColor(...COLORS.black);
 
-      const steps = receta.preparacion.split("\n").filter(Boolean);
+      const steps = receta.preparacion.includes(". ")
+        ? receta.preparacion.split(/\.\s+/).map(s => s.trim()).filter(Boolean)
+        : receta.preparacion.split("\n").filter(Boolean);
       steps.forEach((step, idx) => {
         const lines = splitTextToLines(doc, `${idx + 1}. ${step.trim()}`, pageW - MARGIN * 2);
         for (const l of lines) {
@@ -531,9 +535,9 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
             y = 30;
           }
           doc.text(l, MARGIN + 4, y);
-          y += 4.5;
+          y += 5.5;
         }
-        y += 1;
+        y += 1.5;
       });
     }
 
