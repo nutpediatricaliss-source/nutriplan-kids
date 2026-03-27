@@ -1,90 +1,42 @@
 
+# Plan: Corregir orientación horizontal solo en páginas de menú Grid
 
-# Plan: Reescribir generador de PDF con @react-pdf/renderer
+## Hallazgo
+Sí existe `orientation="landscape"` en `MenuGrid`, pero hoy el PDF sigue saliendo vertical. El problema está en la definición real de la página del menú: hay que forzar la hoja horizontal únicamente en esas páginas del menú semanal, sin tocar Portada, Recetas, Recomendaciones, etc.
 
-## Problema
-El generador actual usa `jsPDF` con posicionamiento manual pixel por pixel, lo que produce un diseño rígido y poco fiel a la marca. Se reescribirá usando `@react-pdf/renderer` que permite layouts declarativos con flexbox, bordes redondeados, sombras y fuentes personalizadas.
+## Qué voy a cambiar
 
-## Cambios principales
+### 1. Forzar tamaño landscape solo en `MenuGrid`
+En `src/lib/pdfGenerator.tsx` actualizaré la página del menú grid para que no dependa solo de `orientation="landscape"`, sino de un tamaño explícito horizontal de A4.
 
-### 1. Instalar dependencia
-- `@react-pdf/renderer` — librería React para generar PDFs declarativamente
+Implementación prevista:
+- Mantener todas las demás páginas con `size="A4"` vertical
+- En `MenuGrid`, usar tamaño landscape explícito:
+  - `size={{ width: 841.89, height: 595.28 }}` o equivalente
+- Con eso, solo las páginas del menú estilo grid saldrán horizontales
 
-### 2. Registrar fuentes
-- Registrar fuente serif (EB Garamond o Playfair Display de Google Fonts) para títulos elegantes
-- Registrar Inter (Sans-serif) para texto de alimentos
-- Usar URLs de CDN de Google Fonts para los archivos `.ttf`
+### 2. Mantener condicional por estilo
+En `PlanDocument` ya existe la condición:
+- `config.estilo === "grid"` → `MenuGrid`
+- `config.estilo !== "grid"` → `MenuLista`
 
-### 3. Reescribir `src/lib/pdfGenerator.ts`
-Reemplazar todo el archivo. La nueva estructura usa componentes React internos renderizados a blob:
+La dejaré así, pero aseguraré que:
+- `MenuGrid` = horizontal
+- `MenuLista` = vertical
+- El resto de secciones = vertical
 
-**Paleta de colores:**
-- `#FDEBDA` — fondo de headers de día y tiempo de comida (melocotón suave)
-- `#e7c688` — acentos dorados, línea ondulada, footer
-- `#ad8a48` — texto de títulos
-- `#282828` — texto normal
+### 3. Ajustar layout interno al ancho horizontal real
+Como el menú tendrá ancho landscape real, ajustaré el layout del grid para aprovechar ese espacio:
+- 7 columnas de días + columna de tiempos
+- celdas con `borderRadius: 8`
+- fondo `#FDEBDA`
+- separación visible entre tarjetas
+- texto pequeño pero legible con wrap dentro de cada celda
 
-**Secciones del PDF (misma estructura actual):**
-1. **Portada** — blobs decorativos, título "Plan Nutricional", nombre paciente, logo
-2. **Generalidades** — bullet list
-3. **Menú Grid** (landscape): 
-   - Header: "Semana X" a la izquierda (serif grande), logo a la derecha, línea ondulada SVG
-   - Grid con flexbox: columna izquierda = tiempos de comida, columnas = días
-   - Cada celda es una "card" con `borderRadius: 6`, `backgroundColor: white`, gap de 4pt entre cards
-   - Headers de día y tiempo con fondo `#FDEBDA`
-   - El `+` entre alimentos se renderiza con color `#ad8a48` y espacio propio
-4. **Menú Lista** (portrait): formato vertical por día con cards
-5. **Snacks** — bullet list
-6. **Recomendaciones** — bullet list  
-7. **Recetas** — imagen + ingredientes + preparación
-8. **Agradecimiento** — mensaje centrado con logo
+## Archivo a modificar
+- `src/lib/pdfGenerator.tsx`
 
-**Footer en todas las páginas:**
-- Franja horizontal color `#e7c688` 
-- Tres datos: `ND. Lissette Gutiérrez | www.lissnutricion.com | @nut.pediatrica.liss`
-
-**Función principal:**
-```typescript
-export async function generatePdf(data: PdfData, config: PdfConfig) {
-  const blob = await pdf(<PlanDocument data={data} config={config} />).toBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Plan_${data.plan.nombre_paciente}.pdf`;
-  a.click();
-}
-```
-
-### 4. Actualizar `src/components/PdfConfigDialog.tsx`
-- Sin cambios en la interfaz — solo asegurar que la importación siga funcionando (mismo `generatePdf` export)
-
-### 5. Copiar logo a `public/images/logo.png`
-- Verificar que el logo ya existe en esa ruta (usado actualmente por el generador)
-
-## Archivos afectados
-- **`src/lib/pdfGenerator.ts`** — reescritura completa
-- **`package.json`** — nueva dependencia `@react-pdf/renderer`
-
-## Detalle técnico: Estructura del Grid
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  Semana 1                              [LOGO]       │
-│  ─── línea ondulada dorada ───────────────────      │
-├──────────┬────────┬────────┬────────┬────────┤      │
-│          │ Día 1  │ Día 2  │ Día 3  │ ...    │      │
-├──────────┼────────┼────────┼────────┼────────┤      │
-│Desayuno  │ card   │ card   │ card   │ card   │      │
-│          │rounded │rounded │rounded │rounded │      │
-├──────────┼────────┼────────┼────────┼────────┤      │
-│Almuerzo  │ card   │ card   │ card   │ card   │      │
-├──────────┼────────┼────────┼────────┼────────┤      │
-│Cena      │ card   │ card   │ card   │ card   │      │
-└──────────┴────────┴────────┴────────┴────────┘      │
-│  ████████ franja melocotón ██████████████████       │
-│  ND. Lissette | web | @instagram                    │
-└─────────────────────────────────────────────────────┘
-```
-
-Cada celda tiene: `borderRadius: 6`, `padding: 4`, gap entre celdas, fondo blanco, y el texto se ajusta automáticamente al ancho.
-
+## Resultado esperado
+- Si eliges **estilo Grid**, las páginas del menú semanal salen en **horizontal**
+- Si eliges **estilo Lista**, las páginas del menú siguen en **vertical**
+- Portada, Generalidades, Recomendaciones, Recetas y Agradecimiento siguen en **vertical**
