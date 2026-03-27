@@ -160,6 +160,36 @@ export type Database = {
         }
         Relationships: []
       }
+      plantillas_texto: {
+        Row: {
+          contenido: string
+          created_at: string | null
+          id: string
+          nombre: string
+          tipo: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contenido?: string
+          created_at?: string | null
+          id?: string
+          nombre: string
+          tipo: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contenido?: string
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          tipo?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       recetas: {
         Row: {
           created_at: string
