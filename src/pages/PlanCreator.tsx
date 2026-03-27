@@ -56,6 +56,37 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+// ─── Debounced Input ────────────────────────────────────────────────────────
+function DebouncedInput({
+  value: externalValue,
+  onChange,
+  ...props
+}: Omit<React.ComponentProps<typeof Input>, "onChange"> & {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    setLocalValue(externalValue);
+  }, [externalValue]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setLocalValue(v);
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => onChange(v), 500);
+  };
+
+  const handleBlur = () => {
+    clearTimeout(timeoutRef.current);
+    if (localValue !== externalValue) onChange(localValue);
+  };
+
+  return <Input {...props} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function parsePorcionMultiplier(porcion: string | null | undefined): number {
   if (!porcion?.trim()) return 1;
