@@ -282,30 +282,30 @@ function MenuGrid({
   const dayColWidth = `${(86 / numDays).toFixed(1)}%`;
 
   return (
-    <Page size="A4" orientation="landscape" style={s.pageLandscape}>
+    <Page size={{ width: 841.89, height: 595.28 }} style={s.pageLandscape}>
       <Header title={`Semana ${weekNum}`} logoSrc={logoSrc} />
-      <WavyLine width={760} />
+      <WavyLine width={790} />
 
       {/* Grid table */}
       <View style={{ flexDirection: "column", flex: 1, marginTop: 4 }}>
         {/* Header row with day names */}
-        <View style={{ flexDirection: "row", gap: 3, marginBottom: 3 }}>
-          <View style={{ width: tiempoColWidth, backgroundColor: C.peach, borderRadius: 4, padding: 4, justifyContent: "center", alignItems: "center" }}>
-            <Text style={{ fontWeight: 700, fontSize: 7, color: C.darkGold }}>Tiempo</Text>
+        <View style={{ flexDirection: "row", gap: 5, marginBottom: 5 }}>
+          <View style={{ width: tiempoColWidth, backgroundColor: C.peach, borderRadius: 6, padding: 5, justifyContent: "center", alignItems: "center" }}>
+            <Text style={{ fontWeight: 700, fontSize: 8, color: C.darkGold }}>Tiempo</Text>
           </View>
           {dayNumbers.map((day) => (
-            <View key={day} style={{ width: dayColWidth, backgroundColor: C.peach, borderRadius: 4, padding: 4, justifyContent: "center", alignItems: "center" }}>
-              <Text style={{ fontWeight: 700, fontSize: 7, color: C.darkGold }}>Día {day}</Text>
+            <View key={day} style={{ width: dayColWidth, backgroundColor: C.peach, borderRadius: 6, padding: 5, justifyContent: "center", alignItems: "center" }}>
+              <Text style={{ fontWeight: 700, fontSize: 8, color: C.darkGold }}>Día {day}</Text>
             </View>
           ))}
         </View>
 
         {/* Data rows */}
         {tiempos.map((tiempo, tIdx) => (
-          <View key={tIdx} style={{ flexDirection: "row", gap: 3, marginBottom: 3, flex: 1 }}>
+          <View key={tIdx} style={{ flexDirection: "row", gap: 5, marginBottom: 5, flex: 1 }}>
             {/* Tiempo label */}
-            <View style={{ width: tiempoColWidth, backgroundColor: C.peach, borderRadius: 4, padding: 4, justifyContent: "center" }}>
-              <Text style={{ fontWeight: 700, fontSize: 7, color: C.darkGold }}>{tiempo}</Text>
+            <View style={{ width: tiempoColWidth, backgroundColor: C.peach, borderRadius: 6, padding: 5, justifyContent: "center" }}>
+              <Text style={{ fontWeight: 700, fontSize: 8, color: C.darkGold }}>{tiempo}</Text>
             </View>
 
             {/* Day cells */}
@@ -318,11 +318,10 @@ function MenuGrid({
                   key={day}
                   style={{
                     width: dayColWidth,
-                    backgroundColor: C.white,
-                    borderRadius: 6,
-                    padding: 4,
-                    borderWidth: 0.5,
-                    borderColor: "#e8e0d4",
+                    backgroundColor: C.peach,
+                    borderRadius: 8,
+                    padding: 5,
+                    flexWrap: "wrap",
                   }}
                 >
                   {dayItems.map((item, idx) => {
@@ -337,9 +336,9 @@ function MenuGrid({
                     return (
                       <React.Fragment key={idx}>
                         {idx > 0 && (
-                          <Text style={{ fontSize: 6, color: C.darkGold, textAlign: "center", marginVertical: 1 }}>+</Text>
+                          <Text style={{ fontSize: 7, color: C.darkGold, textAlign: "center", marginVertical: 2 }}>+</Text>
                         )}
-                        <Text style={{ fontSize: 6.5, color: C.black, lineHeight: 1.3 }}>{name}</Text>
+                        <Text style={{ fontSize: 8, color: C.black, lineHeight: 1.4 }}>{name}</Text>
                       </React.Fragment>
                     );
                   })}
