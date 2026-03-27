@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +55,37 @@ import {
   BookmarkPlus,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// ─── Debounced Input ────────────────────────────────────────────────────────
+function DebouncedInput({
+  value: externalValue,
+  onChange,
+  ...props
+}: Omit<React.ComponentProps<typeof Input>, "onChange"> & {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    setLocalValue(externalValue);
+  }, [externalValue]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setLocalValue(v);
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => onChange(v), 500);
+  };
+
+  const handleBlur = () => {
+    clearTimeout(timeoutRef.current);
+    if (localValue !== externalValue) onChange(localValue);
+  };
+
+  return <Input {...props} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function parsePorcionMultiplier(porcion: string | null | undefined): number {
@@ -388,9 +419,9 @@ export default function PlanCreator() {
             <ArrowLeft className="mr-1 h-4 w-4" />
             Volver
           </Button>
-          <Input
+          <DebouncedInput
             value={plan.nombre_paciente}
-            onChange={(e) => updatePlan({ nombre_paciente: e.target.value })}
+            onChange={(v) => updatePlan({ nombre_paciente: v })}
             className="w-56 font-semibold bg-background"
           />
           <Select
@@ -420,11 +451,11 @@ export default function PlanCreator() {
               <div className="space-y-3">
                 {tiemposComida.map((tc, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input
+                    <DebouncedInput
                       value={tc}
-                      onChange={(e) => {
+                      onChange={(v) => {
                         const updated = [...tiemposComida];
-                        updated[i] = e.target.value;
+                        updated[i] = v;
                         updatePlan({ tiempos_comida: updated });
                       }}
                       className="flex-1"
@@ -696,10 +727,10 @@ export default function PlanCreator() {
                                             Porción base: {baseAlimento.porcion}
                                           </p>
                                         )}
-                                        <Input
+                                        <DebouncedInput
                                           value={item.porcion ?? ""}
-                                          onChange={(e) =>
-                                            updateItem(item.id, { porcion: e.target.value })
+                                          onChange={(v) =>
+                                            updateItem(item.id, { porcion: v })
                                           }
                                           placeholder="Cantidad (ej. 2, 1/2)"
                                           className="h-7 text-xs"
@@ -719,10 +750,10 @@ export default function PlanCreator() {
 
                                   {item.tipo === "receta" && (
                                     <div className="mt-1 space-y-1.5">
-                                      <Input
+                                      <DebouncedInput
                                         value={item.nota_menu ?? ""}
-                                        onChange={(e) =>
-                                          updateItem(item.id, { nota_menu: e.target.value })
+                                        onChange={(v) =>
+                                          updateItem(item.id, { nota_menu: v })
                                         }
                                         placeholder="Nota para el menú..."
                                         className="h-7 text-xs"
