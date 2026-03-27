@@ -1,42 +1,39 @@
 
-# Plan: Corregir orientación horizontal solo en páginas de menú Grid
 
-## Hallazgo
-Sí existe `orientation="landscape"` en `MenuGrid`, pero hoy el PDF sigue saliendo vertical. El problema está en la definición real de la página del menú: hay que forzar la hoja horizontal únicamente en esas páginas del menú semanal, sin tocar Portada, Recetas, Recomendaciones, etc.
+# Plan: Formato de ingredientes y preparación en recetas
 
-## Qué voy a cambiar
+## Problema
+Los ingredientes y la preparación se guardan como texto plano. El código actual hace split por `\n`, pero los datos reales usan `;` para ingredientes y `. ` para pasos de preparación, resultando en una sola línea larga.
 
-### 1. Forzar tamaño landscape solo en `MenuGrid`
-En `src/lib/pdfGenerator.tsx` actualizaré la página del menú grid para que no dependa solo de `orientation="landscape"`, sino de un tamaño explícito horizontal de A4.
+## Cambios
 
-Implementación prevista:
-- Mantener todas las demás páginas con `size="A4"` vertical
-- En `MenuGrid`, usar tamaño landscape explícito:
-  - `size={{ width: 841.89, height: 595.28 }}` o equivalente
-- Con eso, solo las páginas del menú estilo grid saldrán horizontales
+### 1. `src/pages/Recetas.tsx` — Vista de recetas en cards
+Agregar una vista expandible o detalle visible en cada card que muestre:
+- **Ingredientes**: split por `;`, cada uno con bullet point (`•`), con `mb-1` entre líneas
+- **Preparación**: split por `. ` (punto seguido de espacio), lista numerada (1, 2, 3...), con `mb-1.5` entre pasos
 
-### 2. Mantener condicional por estilo
-En `PlanDocument` ya existe la condición:
-- `config.estilo === "grid"` → `MenuGrid`
-- `config.estilo !== "grid"` → `MenuLista`
+### 2. `src/lib/pdfGenerator.ts` — Renderizado en PDF
+Modificar las funciones de parsing en `renderRecetas`:
+- **Ingredientes** (línea 494): cambiar `split("\n")` a split inteligente que primero intente `;` y si no hay, use `\n`
+- **Preparación** (línea 523): cambiar `split("\n")` a split inteligente que primero intente `. ` y si no hay, use `\n`
+- Agregar spacing extra entre items (`y += 5.5` en vez de `4.5`) para evitar que se vean amontonados
 
-La dejaré así, pero aseguraré que:
-- `MenuGrid` = horizontal
-- `MenuLista` = vertical
-- El resto de secciones = vertical
+### Lógica de split inteligente (reutilizable)
+```typescript
+function splitIngredientes(text: string): string[] {
+  if (text.includes(";")) return text.split(";").map(s => s.trim()).filter(Boolean);
+  return text.split("\n").filter(Boolean);
+}
 
-### 3. Ajustar layout interno al ancho horizontal real
-Como el menú tendrá ancho landscape real, ajustaré el layout del grid para aprovechar ese espacio:
-- 7 columnas de días + columna de tiempos
-- celdas con `borderRadius: 8`
-- fondo `#FDEBDA`
-- separación visible entre tarjetas
-- texto pequeño pero legible con wrap dentro de cada celda
+function splitPreparacion(text: string): string[] {
+  if (text.includes(". ")) {
+    return text.split(/\.\s+/).map(s => s.trim()).filter(Boolean);
+  }
+  return text.split("\n").filter(Boolean);
+}
+```
 
-## Archivo a modificar
-- `src/lib/pdfGenerator.tsx`
+### Archivos a modificar
+- **`src/pages/Recetas.tsx`** — Mostrar ingredientes y preparación formateados en las cards
+- **`src/lib/pdfGenerator.ts`** — Usar los nuevos splits en el renderizado de recetas del PDF
 
-## Resultado esperado
-- Si eliges **estilo Grid**, las páginas del menú semanal salen en **horizontal**
-- Si eliges **estilo Lista**, las páginas del menú siguen en **vertical**
-- Portada, Generalidades, Recomendaciones, Recetas y Agradecimiento siguen en **vertical**
