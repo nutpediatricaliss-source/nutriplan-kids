@@ -440,14 +440,19 @@ export default function Recetas() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o etiqueta..."
-          className="pl-9"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o etiqueta..."
+            className="pl-9"
+          />
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {recetas.length} receta{recetas.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       {filtered.length === 0 ? (
