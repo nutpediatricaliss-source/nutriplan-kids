@@ -88,7 +88,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Copy items
     const { data: items } = await supabase
       .from("plan_items")
       .select("*")
@@ -162,12 +161,12 @@ export default function Dashboard() {
   }
 
   const PlanCard = ({ plan, isTemplate = false }: { plan: PlanMenu; isTemplate?: boolean }) => (
-    <Card className={`group transition-shadow hover:shadow-md ${isTemplate ? "border-lavender bg-lavender/20" : ""}`}>
+    <Card className={`group rounded-2xl transition-all hover:shadow-lg ${isTemplate ? "border-lavender bg-lavender/20" : "shadow-sm"}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-base">{plan.nombre_paciente}</CardTitle>
-            <CardDescription>
+            <CardTitle className="truncate text-base font-semibold">{plan.nombre_paciente}</CardTitle>
+            <CardDescription className="mt-1">
               {plan.dias} días · {(plan.tiempos_comida as string[]).length} tiempos
             </CardDescription>
           </div>
@@ -217,36 +216,36 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Plans Section */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Planes de Menú</h1>
-            <p className="text-muted-foreground">Gestiona los planes nutricionales de tus pacientes</p>
+            <p className="text-muted-foreground mt-1">Gestiona los planes nutricionales de tus pacientes</p>
           </div>
-          <Button onClick={createPlan} className="gap-2">
+          <Button onClick={createPlan} className="gap-2 rounded-xl shadow-sm">
             <Plus className="h-4 w-4" />
             Nuevo Plan
           </Button>
         </div>
 
         {planes.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Calendar className="mb-4 h-12 w-12 text-muted-foreground/50" />
+          <Card className="border-dashed rounded-2xl">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Calendar className="mb-4 h-12 w-12 text-muted-foreground/40" />
               <p className="mb-1 text-lg font-medium">Sin planes todavía</p>
-              <p className="mb-4 text-sm text-muted-foreground">
+              <p className="mb-5 text-sm text-muted-foreground">
                 Crea tu primer plan de menú para comenzar
               </p>
-              <Button onClick={createPlan} variant="outline" className="gap-2">
+              <Button onClick={createPlan} variant="outline" className="gap-2 rounded-xl">
                 <Plus className="h-4 w-4" />
                 Crear primer plan
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {planes.map((plan) => (
               <PlanCard key={plan.id} plan={plan} />
             ))}
@@ -256,15 +255,15 @@ export default function Dashboard() {
 
       {/* Templates Section */}
       {plantillas.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
             <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
               <BookmarkCheck className="h-5 w-5 text-lavender-foreground" />
               Mis Plantillas
             </h2>
-            <p className="text-sm text-muted-foreground">Reutiliza estructuras de menú guardadas</p>
+            <p className="text-sm text-muted-foreground mt-1">Reutiliza estructuras de menú guardadas</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {plantillas.map((t) => (
               <PlanCard key={t.id} plan={t} isTemplate />
             ))}
