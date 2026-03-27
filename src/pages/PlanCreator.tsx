@@ -451,11 +451,11 @@ export default function PlanCreator() {
               <div className="space-y-3">
                 {tiemposComida.map((tc, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input
+                    <DebouncedInput
                       value={tc}
-                      onChange={(e) => {
+                      onChange={(v) => {
                         const updated = [...tiemposComida];
-                        updated[i] = e.target.value;
+                        updated[i] = v;
                         updatePlan({ tiempos_comida: updated });
                       }}
                       className="flex-1"
