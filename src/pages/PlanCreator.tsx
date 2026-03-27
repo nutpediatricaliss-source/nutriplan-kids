@@ -419,9 +419,9 @@ export default function PlanCreator() {
             <ArrowLeft className="mr-1 h-4 w-4" />
             Volver
           </Button>
-          <Input
+          <DebouncedInput
             value={plan.nombre_paciente}
-            onChange={(e) => updatePlan({ nombre_paciente: e.target.value })}
+            onChange={(v) => updatePlan({ nombre_paciente: v })}
             className="w-56 font-semibold bg-background"
           />
           <Select
