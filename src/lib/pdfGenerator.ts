@@ -319,11 +319,15 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
         const imgY = dayStartY - 2;
         const imgX = pageW - MARGIN - IMG_SIZE;
         try {
-          // Draw a soft rounded border
-          doc.setDrawColor(...COLORS.gold);
-          doc.setLineWidth(0.4);
-          doc.roundedRect(imgX - 1, imgY - 1, IMG_SIZE + 2, IMG_SIZE + 2, 3, 3, "S");
+          // Clip image with rounded corners (10px ≈ 3.5mm)
+          const r = 3.5;
+          doc.saveGraphicsState();
+          // Create rounded rect clipping path
+          doc.roundedRect(imgX, imgY, IMG_SIZE, IMG_SIZE, r, r);
+          // @ts-ignore — jsPDF clip method
+          doc.clip();
           doc.addImage(dayImageData, "JPEG", imgX, imgY, IMG_SIZE, IMG_SIZE);
+          doc.restoreGraphicsState();
         } catch { /* image failed */ }
         // Ensure y is at least past the image
         if (y < imgY + IMG_SIZE + 4) {
