@@ -503,18 +503,18 @@ function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: LoadedIm
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Recomendaciones", MARGIN, 35);
+  doc.text("Recomendaciones", MARGIN, 48);
 
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 38, MARGIN + 48, 38);
+  doc.line(MARGIN, 51, MARGIN + 48, 51);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.black);
 
   const bullets = config.recomendaciones.split("\n").filter(Boolean);
-  drawBulletList(doc, bullets, 50, doc.internal.pageSize.getWidth() - MARGIN * 2);
+  drawBulletList(doc, bullets, 60, doc.internal.pageSize.getWidth() - MARGIN * 2);
 
   drawFooter(doc, config.contacto);
 }
