@@ -537,12 +537,12 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Recetas", MARGIN, 35);
+  doc.text("Recetas", MARGIN, 48);
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 38, MARGIN + 30, 38);
+  doc.line(MARGIN, 51, MARGIN + 30, 51);
 
-  let y = 48;
+  let y = 60;
 
   for (let ri = 0; ri < recipesToShow.length; ri++) {
     const receta = recipesToShow[ri];
