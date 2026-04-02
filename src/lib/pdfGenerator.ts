@@ -194,18 +194,18 @@ function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: LoadedImag
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Generalidades del Menú", MARGIN, 35);
+  doc.text("Generalidades del Menú", MARGIN, 48);
 
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 38, MARGIN + 60, 38);
+  doc.line(MARGIN, 51, MARGIN + 60, 51);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.black);
 
   const bullets = config.generalidades.split("\n").filter(Boolean);
-  drawBulletList(doc, bullets, 50, doc.internal.pageSize.getWidth() - MARGIN * 2);
+  drawBulletList(doc, bullets, 60, doc.internal.pageSize.getWidth() - MARGIN * 2);
 
   drawFooter(doc, config.contacto);
 }
