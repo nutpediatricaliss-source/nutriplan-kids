@@ -94,8 +94,8 @@ function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
       const logoH = 35;
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
       const logoW = logoH * aspectRatio;
-      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, -2, logoW, logoH);
-      lineY = logoH - 2 + 1; // 1mm below logo bottom
+      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 2, logoW, logoH);
+      lineY = 38;
     } catch { /* logo failed */ }
   }
 
@@ -104,7 +104,7 @@ function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
   doc.setLineWidth(0.8);
   doc.line(MARGIN, lineY, w - MARGIN, lineY);
   doc.setLineWidth(0.3);
-  doc.line(MARGIN, lineY + 1.5, w - MARGIN, lineY + 1.5);
+  doc.line(MARGIN, lineY + 2, w - MARGIN, lineY + 2);
 }
 
 function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] {
@@ -194,11 +194,11 @@ function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: LoadedImag
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Generalidades del Menú", MARGIN, 40);
+  doc.text("Generalidades del Menú", MARGIN, 35);
 
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 43, MARGIN + 60, 51);
+  doc.line(MARGIN, 38, MARGIN + 60, 38);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -224,18 +224,18 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
     doc.setFont("times", "bold");
     doc.setFontSize(16);
     doc.setTextColor(...COLORS.darkGold);
-    doc.text(`Semana ${week + 1}`, MARGIN, 40);
+    doc.text(`Semana ${week + 1}`, MARGIN, 35);
 
     const weekStart = week * 7 + 1;
     const weekEnd = Math.min(weekStart + 6, data.plan.dias);
-    let y = 48;
+    let y = 45;
 
     for (let day = weekStart; day <= weekEnd; day++) {
       if (y > 250) {
         drawFooter(doc, config.contacto);
         doc.addPage();
         addHeaderWithLogo(doc, logoData);
-        y = 40;
+        y = 30;
       }
 
       // Find first recipe image for this day
@@ -308,7 +308,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
               drawFooter(doc, config.contacto);
               doc.addPage();
               addHeaderWithLogo(doc, logoData);
-              y = 40;
+              y = 30;
             }
             doc.text(l, MARGIN + 8, y);
             y += 4;
@@ -480,11 +480,11 @@ function renderSnacks(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | nul
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Snacks y Colaciones", MARGIN, 40);
+  doc.text("Snacks y Colaciones", MARGIN, 35);
 
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 43, MARGIN + 55, 51);
+  doc.line(MARGIN, 38, MARGIN + 55, 38);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -503,11 +503,11 @@ function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: LoadedIm
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Recomendaciones", MARGIN, 40);
+  doc.text("Recomendaciones", MARGIN, 35);
 
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 43, MARGIN + 48, 51);
+  doc.line(MARGIN, 38, MARGIN + 48, 38);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -537,12 +537,12 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Recetas", MARGIN, 40);
+  doc.text("Recetas", MARGIN, 35);
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 43, MARGIN + 30, 51);
+  doc.line(MARGIN, 38, MARGIN + 30, 38);
 
-  let y = 50;
+  let y = 48;
 
   for (let ri = 0; ri < recipesToShow.length; ri++) {
     const receta = recipesToShow[ri];
@@ -551,7 +551,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       drawFooter(doc, config.contacto);
       doc.addPage("portrait");
       addHeaderWithLogo(doc, logoData);
-      y = 40;
+      y = 30;
     }
 
     if (ri > 0) {
@@ -603,7 +603,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
             drawFooter(doc, config.contacto);
             doc.addPage("portrait");
             addHeaderWithLogo(doc, logoData);
-            y = 40;
+            y = 30;
           }
           doc.text(l, MARGIN + 4, y);
           y += 5.5;
@@ -633,7 +633,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
             drawFooter(doc, config.contacto);
             doc.addPage("portrait");
             addHeaderWithLogo(doc, logoData);
-            y = 40;
+            y = 30;
           }
           doc.text(l, MARGIN + 4, y);
           y += 5.5;
