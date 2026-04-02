@@ -438,7 +438,6 @@ function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: string |
 }
 
 async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: string | null) {
-  // Only recipes that are included in plan items with incluir_detalle_pdf = true
   const includedRecipeIds = new Set(
     data.items
       .filter((i) => i.tipo === "receta" && i.incluir_detalle_pdf)
@@ -450,23 +449,50 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
 
   const pageW = 210;
 
-  for (const receta of recipesToShow) {
-    doc.addPage("portrait");
-    await addHeaderWithLogo(doc, logoData);
+  // Start first recipes page
+  doc.addPage("portrait");
+  await addHeaderWithLogo(doc, logoData);
 
-    let y = 35;
+  doc.setFont("times", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...COLORS.darkGold);
+  doc.text("Recetas", MARGIN, 35);
+  doc.setDrawColor(...COLORS.gold);
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, 38, MARGIN + 30, 38);
+
+  let y = 48;
+
+  for (let ri = 0; ri < recipesToShow.length; ri++) {
+    const receta = recipesToShow[ri];
+
+    // Estimate space needed: at least 60mm for a recipe
+    if (y > FOOTER_Y - 60) {
+      drawFooter(doc, config.contacto);
+      doc.addPage("portrait");
+      await addHeaderWithLogo(doc, logoData);
+      y = 30;
+    }
+
+    // Separator between recipes (not before the first one)
+    if (ri > 0) {
+      doc.setDrawColor(...COLORS.gold);
+      doc.setLineWidth(0.4);
+      doc.line(MARGIN + 10, y, pageW - MARGIN - 10, y);
+      y += 6;
+    }
 
     // Recipe name
     doc.setFont("times", "bold");
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setTextColor(...COLORS.darkGold);
     doc.text(receta.nombre, MARGIN, y);
     y += 4;
 
     doc.setDrawColor(...COLORS.gold);
-    doc.setLineWidth(0.5);
-    doc.line(MARGIN, y, MARGIN + 40, y);
-    y += 8;
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, MARGIN + 30, y);
+    y += 6;
 
     const textMaxW = receta.imagen_url ? pageW - MARGIN * 2 - 60 : pageW - MARGIN * 2;
     const imgX = pageW - MARGIN - 50;
@@ -475,7 +501,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
     if (receta.imagen_url) {
       try {
         const imgData = await loadImage(receta.imagen_url);
-        doc.addImage(imgData, "JPEG", imgX, 35, 50, 50);
+        doc.addImage(imgData, "JPEG", imgX, y - 8, 50, 50);
       } catch { /* image failed to load */ }
     }
 
@@ -507,7 +533,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
           y += 5.5;
         }
       }
-      y += 4;
+      y += 3;
     }
 
     // Preparación
@@ -541,8 +567,10 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       });
     }
 
-    drawFooter(doc, config.contacto);
+    y += 6;
   }
+
+  drawFooter(doc, config.contacto);
 }
 
 function renderAgradecimiento(doc: jsPDF, config: PdfConfig, logoData: string | null) {
