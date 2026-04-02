@@ -235,7 +235,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
         drawFooter(doc, config.contacto);
         doc.addPage();
         addHeaderWithLogo(doc, logoData);
-        y = 30;
+        y = 46;
       }
 
       // Find first recipe image for this day
@@ -308,7 +308,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
               drawFooter(doc, config.contacto);
               doc.addPage();
               addHeaderWithLogo(doc, logoData);
-              y = 30;
+              y = 46;
             }
             doc.text(l, MARGIN + 8, y);
             y += 4;
@@ -551,7 +551,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       drawFooter(doc, config.contacto);
       doc.addPage("portrait");
       addHeaderWithLogo(doc, logoData);
-      y = 30;
+      y = 46;
     }
 
     if (ri > 0) {
@@ -603,7 +603,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
             drawFooter(doc, config.contacto);
             doc.addPage("portrait");
             addHeaderWithLogo(doc, logoData);
-            y = 30;
+            y = 46;
           }
           doc.text(l, MARGIN + 4, y);
           y += 5.5;
@@ -633,7 +633,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
             drawFooter(doc, config.contacto);
             doc.addPage("portrait");
             addHeaderWithLogo(doc, logoData);
-            y = 30;
+            y = 46;
           }
           doc.text(l, MARGIN + 4, y);
           y += 5.5;
