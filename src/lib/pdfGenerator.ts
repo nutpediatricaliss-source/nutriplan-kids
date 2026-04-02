@@ -480,18 +480,18 @@ function renderSnacks(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | nul
   doc.setFont("times", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Snacks y Colaciones", MARGIN, 35);
+  doc.text("Snacks y Colaciones", MARGIN, 48);
 
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(MARGIN, 38, MARGIN + 55, 38);
+  doc.line(MARGIN, 51, MARGIN + 55, 51);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.black);
 
   const bullets = config.snacksColaciones.split("\n").filter(Boolean);
-  drawBulletList(doc, bullets, 50, doc.internal.pageSize.getWidth() - MARGIN * 2);
+  drawBulletList(doc, bullets, 60, doc.internal.pageSize.getWidth() - MARGIN * 2);
 
   drawFooter(doc, config.contacto);
 }
