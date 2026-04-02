@@ -87,21 +87,24 @@ function drawFooter(doc: jsPDF, contacto: string) {
 function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
   const w = doc.internal.pageSize.getWidth();
 
-  // Clean double golden line
-  doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(0.8);
-  doc.line(MARGIN, 12, w - MARGIN, 12);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, 14, w - MARGIN, 14);
-
+  // Logo first, then lines below it
+  let lineY = 14;
   if (logoData) {
     try {
-      const logoH = 12;
+      const logoH = 35;
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
       const logoW = logoH * aspectRatio;
-      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 0.5, logoW, logoH);
+      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 2, logoW, logoH);
+      lineY = 38;
     } catch { /* logo failed */ }
   }
+
+  // Clean double golden line below logo
+  doc.setDrawColor(...COLORS.gold);
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, lineY, w - MARGIN, lineY);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, lineY + 2, w - MARGIN, lineY + 2);
 }
 
 function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] {
@@ -319,11 +322,15 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
         const imgY = dayStartY - 2;
         const imgX = pageW - MARGIN - IMG_SIZE;
         try {
-          // Draw a soft rounded border
-          doc.setDrawColor(...COLORS.gold);
-          doc.setLineWidth(0.4);
-          doc.roundedRect(imgX - 1, imgY - 1, IMG_SIZE + 2, IMG_SIZE + 2, 3, 3, "S");
+          // Clip image with rounded corners (10px ≈ 3.5mm)
+          const r = 3.5;
+          doc.saveGraphicsState();
+          // Create rounded rect clipping path
+          doc.roundedRect(imgX, imgY, IMG_SIZE, IMG_SIZE, r, r);
+          // @ts-ignore — jsPDF clip method
+          doc.clip();
           doc.addImage(dayImageData, "JPEG", imgX, imgY, IMG_SIZE, IMG_SIZE);
+          doc.restoreGraphicsState();
         } catch { /* image failed */ }
         // Ensure y is at least past the image
         if (y < imgY + IMG_SIZE + 4) {
