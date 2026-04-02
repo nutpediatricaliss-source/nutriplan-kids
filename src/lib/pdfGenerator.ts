@@ -32,6 +32,12 @@ export interface PdfData {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+interface LoadedImage {
+  dataUrl: string;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
 function loadImage(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -48,16 +54,24 @@ function loadImage(url: string): Promise<string> {
   });
 }
 
-function drawWavyLine(doc: jsPDF, y: number, width: number) {
-  doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(1.5);
-  const step = 4;
-  const amp = 3;
-  for (let x = MARGIN; x < width - MARGIN; x += step) {
-    const y1 = y + Math.sin((x / step) * Math.PI) * amp;
-    const y2 = y + Math.sin(((x + step) / step) * Math.PI) * amp;
-    doc.line(x, y1, x + step, y2);
-  }
+function loadImageWithDimensions(url: string): Promise<LoadedImage> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      resolve({
+        dataUrl: canvas.toDataURL("image/png"),
+        naturalWidth: img.width,
+        naturalHeight: img.height,
+      });
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 function drawFooter(doc: jsPDF, contacto: string) {
@@ -70,12 +84,22 @@ function drawFooter(doc: jsPDF, contacto: string) {
   doc.text(contacto, w / 2, FOOTER_Y + 4, { align: "center" });
 }
 
-async function addHeaderWithLogo(doc: jsPDF, logoData: string | null) {
+function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
   const w = doc.internal.pageSize.getWidth();
-  drawWavyLine(doc, 12, w);
+
+  // Clean double golden line
+  doc.setDrawColor(...COLORS.gold);
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, 12, w - MARGIN, 12);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, 14, w - MARGIN, 14);
+
   if (logoData) {
     try {
-      doc.addImage(logoData, "PNG", w - 45, 5, 30, 15);
+      const logoH = 12;
+      const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
+      const logoW = logoH * aspectRatio;
+      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 0.5, logoW, logoH);
     } catch { /* logo failed */ }
   }
 }
@@ -106,69 +130,61 @@ function drawDecorativeBlobs(doc: jsPDF) {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
 
-  // Top-left blob
   doc.setFillColor(...COLORS.cream);
   doc.ellipse(0, 0, 70, 50, "F");
 
-  // Top-right blob
   doc.setFillColor(...COLORS.gold);
   doc.ellipse(w, 0, 60, 45, "F");
 
-  // Bottom-left blob
   doc.setFillColor(...COLORS.gold);
   doc.ellipse(0, h, 80, 55, "F");
 
-  // Bottom-right blob
   doc.setFillColor(...COLORS.cream);
   doc.ellipse(w, h, 65, 50, "F");
 
-  // Middle accent
   doc.setFillColor(255, 240, 210);
   doc.ellipse(w * 0.7, h * 0.3, 30, 25, "F");
 }
 
 // ─── Section renderers ────────────────────────────────────────────────────
-function renderPortada(doc: jsPDF, plan: PlanMenu, logoData: string | null) {
+function renderPortada(doc: jsPDF, plan: PlanMenu, logoData: LoadedImage | null) {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
 
   drawDecorativeBlobs(doc);
 
-  // Thin decorative lines
   doc.setDrawColor(...COLORS.darkGold);
   doc.setLineWidth(0.3);
   doc.rect(25, 25, w - 50, h - 50);
 
-  // Title
   doc.setFontSize(32);
   doc.setFont("times", "bold");
   doc.setTextColor(...COLORS.darkGold);
   doc.text("Plan Nutricional", w / 2, h * 0.35, { align: "center" });
 
-  // Patient name
   doc.setFontSize(18);
   doc.setFont("times", "normal");
   doc.setTextColor(...COLORS.black);
   doc.text(plan.nombre_paciente, w / 2, h * 0.43, { align: "center" });
 
-  // Subtitle
   doc.setFontSize(12);
   doc.setTextColor(...COLORS.gray);
   doc.text("Consulta de Nutrición Pediátrica", w / 2, h * 0.50, { align: "center" });
 
-  // Duration
   doc.setFontSize(10);
   doc.text(`${plan.dias} días`, w / 2, h * 0.55, { align: "center" });
 
-  // Logo at bottom center
   if (logoData) {
     try {
-      doc.addImage(logoData, "PNG", w / 2 - 25, h * 0.72, 50, 25);
+      const logoH = 25;
+      const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
+      const logoW = logoH * aspectRatio;
+      doc.addImage(logoData.dataUrl, "PNG", w / 2 - logoW / 2, h * 0.72, logoW, logoH);
     } catch { /* */ }
   }
 }
 
-function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: string | null) {
+function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | null) {
   doc.addPage();
   addHeaderWithLogo(doc, logoData);
 
@@ -191,10 +207,12 @@ function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: string | n
   drawFooter(doc, config.contacto);
 }
 
-function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: string | null) {
+async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: LoadedImage | null) {
   const tiempos = (data.plan.tiempos_comida as string[]) ?? [];
   const totalWeeks = Math.ceil(data.plan.dias / 7);
   const pageW = doc.internal.pageSize.getWidth();
+  const IMG_SIZE = 38;
+  const IMG_MARGIN = 6;
 
   for (let week = 0; week < totalWeeks; week++) {
     doc.addPage();
@@ -217,9 +235,31 @@ function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData:
         y = 30;
       }
 
+      // Find first recipe image for this day
+      const dayRecipeItems = data.items.filter(
+        (i) => i.dia === day && i.tipo === "receta"
+      );
+      let dayImageData: string | null = null;
+      for (const ri of dayRecipeItems) {
+        const rec = data.recetas.find((r) => r.id === ri.item_id);
+        if (rec?.imagen_url) {
+          try {
+            dayImageData = await loadImage(rec.imagen_url);
+            break;
+          } catch { /* skip */ }
+        }
+      }
+
+      const hasImage = !!dayImageData;
+      const textMaxW = hasImage
+        ? pageW - MARGIN * 2 - IMG_SIZE - IMG_MARGIN
+        : pageW - MARGIN * 2;
+
+      const dayStartY = y;
+
       // Day header
       doc.setFillColor(...COLORS.cream);
-      doc.roundedRect(MARGIN, y - 4, pageW - MARGIN * 2, 8, 2, 2, "F");
+      doc.roundedRect(MARGIN, y - 4, textMaxW, 8, 2, 2, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(...COLORS.darkGold);
@@ -248,7 +288,6 @@ function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData:
             const al = data.alimentos.find((a) => a.id === item.item_id);
             name = al?.nombre ?? "Alimento";
             if (item.porcion) {
-              // Combine multiplier with base unit
               const baseUnit = al?.porcion
                 ? al.porcion.replace(/^[\d.,/\s]+/, "").trim()
                 : "";
@@ -260,7 +299,7 @@ function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData:
             if (item.nota_menu) name += ` (${item.nota_menu})`;
           }
 
-          const lines = splitTextToLines(doc, `• ${name}`, pageW - MARGIN * 2 - 10);
+          const lines = splitTextToLines(doc, `• ${name}`, textMaxW - 10);
           for (const l of lines) {
             if (y > FOOTER_Y - 10) {
               drawFooter(doc, config.contacto);
@@ -274,6 +313,24 @@ function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData:
         }
         y += 2;
       }
+
+      // Draw the day image on the right side
+      if (hasImage && dayImageData) {
+        const imgY = dayStartY - 2;
+        const imgX = pageW - MARGIN - IMG_SIZE;
+        try {
+          // Draw a soft rounded border
+          doc.setDrawColor(...COLORS.gold);
+          doc.setLineWidth(0.4);
+          doc.roundedRect(imgX - 1, imgY - 1, IMG_SIZE + 2, IMG_SIZE + 2, 3, 3, "S");
+          doc.addImage(dayImageData, "JPEG", imgX, imgY, IMG_SIZE, IMG_SIZE);
+        } catch { /* image failed */ }
+        // Ensure y is at least past the image
+        if (y < imgY + IMG_SIZE + 4) {
+          y = imgY + IMG_SIZE + 4;
+        }
+      }
+
       y += 4;
     }
 
@@ -281,7 +338,7 @@ function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData:
   }
 }
 
-function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: string | null) {
+function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: LoadedImage | null) {
   const tiempos = (data.plan.tiempos_comida as string[]) ?? [];
   const totalWeeks = Math.ceil(data.plan.dias / 7);
 
@@ -291,9 +348,19 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
     const pageH = doc.internal.pageSize.getHeight();
 
     // Header
-    drawWavyLine(doc, 8, pageW);
+    doc.setDrawColor(...COLORS.gold);
+    doc.setLineWidth(0.8);
+    doc.line(15, 10, pageW - 15, 10);
+    doc.setLineWidth(0.3);
+    doc.line(15, 12, pageW - 15, 12);
+
     if (logoData) {
-      try { doc.addImage(logoData, "PNG", pageW - 40, 3, 25, 12); } catch {}
+      try {
+        const logoH = 10;
+        const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
+        const logoW = logoH * aspectRatio;
+        doc.addImage(logoData.dataUrl, "PNG", pageW - 15 - logoW, 1, logoW, logoH);
+      } catch {}
     }
 
     doc.setFont("times", "bold");
@@ -307,9 +374,11 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
 
     const tableX = 15;
     const tableY = 28;
-    const colW = (pageW - 30 - 50) / numDays; // 50 for tiempo col
+    const colW = (pageW - 30 - 50) / numDays;
     const tiempoColW = 50;
     const rowH = Math.min((pageH - tableY - 20) / (tiempos.length + 1), 22);
+
+    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
     // Header row
     doc.setFillColor(...COLORS.gold);
@@ -324,14 +393,14 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
       doc.setFillColor(...COLORS.gold);
       doc.rect(x, tableY, colW, rowH, "F");
       doc.setTextColor(...COLORS.white);
-      doc.text(`Día ${weekStart + i}`, x + 3, tableY + rowH / 2 + 1);
+      const dayLabel = `${dayNames[i % 7]} (Día ${weekStart + i})`;
+      doc.text(dayLabel, x + 3, tableY + rowH / 2 + 1);
     }
 
     // Data rows
     for (let t = 0; t < tiempos.length; t++) {
       const rowY = tableY + (t + 1) * rowH;
 
-      // Tiempo label
       doc.setFillColor(...COLORS.creamSoft);
       doc.rect(tableX, rowY, tiempoColW, rowH, "F");
       doc.setFont("helvetica", "bold");
@@ -397,7 +466,7 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
   }
 }
 
-function renderSnacks(doc: jsPDF, config: PdfConfig, logoData: string | null) {
+function renderSnacks(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | null) {
   doc.addPage("portrait");
   addHeaderWithLogo(doc, logoData);
 
@@ -420,7 +489,7 @@ function renderSnacks(doc: jsPDF, config: PdfConfig, logoData: string | null) {
   drawFooter(doc, config.contacto);
 }
 
-function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: string | null) {
+function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | null) {
   doc.addPage("portrait");
   addHeaderWithLogo(doc, logoData);
 
@@ -443,7 +512,7 @@ function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: string |
   drawFooter(doc, config.contacto);
 }
 
-async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: string | null) {
+async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: LoadedImage | null) {
   const includedRecipeIds = new Set(
     data.items
       .filter((i) => i.tipo === "receta" && i.incluir_detalle_pdf)
@@ -455,9 +524,8 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
 
   const pageW = 210;
 
-  // Start first recipes page
   doc.addPage("portrait");
-  await addHeaderWithLogo(doc, logoData);
+  addHeaderWithLogo(doc, logoData);
 
   doc.setFont("times", "bold");
   doc.setFontSize(18);
@@ -472,15 +540,13 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
   for (let ri = 0; ri < recipesToShow.length; ri++) {
     const receta = recipesToShow[ri];
 
-    // Estimate space needed: at least 60mm for a recipe
     if (y > FOOTER_Y - 60) {
       drawFooter(doc, config.contacto);
       doc.addPage("portrait");
-      await addHeaderWithLogo(doc, logoData);
+      addHeaderWithLogo(doc, logoData);
       y = 30;
     }
 
-    // Separator between recipes (not before the first one)
     if (ri > 0) {
       doc.setDrawColor(...COLORS.gold);
       doc.setLineWidth(0.4);
@@ -488,7 +554,6 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       y += 6;
     }
 
-    // Recipe name
     doc.setFont("times", "bold");
     doc.setFontSize(14);
     doc.setTextColor(...COLORS.darkGold);
@@ -503,7 +568,6 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
     const textMaxW = receta.imagen_url ? pageW - MARGIN * 2 - 60 : pageW - MARGIN * 2;
     const imgX = pageW - MARGIN - 50;
 
-    // Try to add recipe image
     if (receta.imagen_url) {
       try {
         const imgData = await loadImage(receta.imagen_url);
@@ -511,7 +575,6 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       } catch { /* image failed to load */ }
     }
 
-    // Ingredientes
     if (receta.ingredientes) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
@@ -532,7 +595,7 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
           if (y > FOOTER_Y - 10) {
             drawFooter(doc, config.contacto);
             doc.addPage("portrait");
-            await addHeaderWithLogo(doc, logoData);
+            addHeaderWithLogo(doc, logoData);
             y = 30;
           }
           doc.text(l, MARGIN + 4, y);
@@ -542,7 +605,6 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
       y += 3;
     }
 
-    // Preparación
     if (receta.preparacion) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
@@ -579,19 +641,17 @@ async function renderRecetas(doc: jsPDF, data: PdfData, config: PdfConfig, logoD
   drawFooter(doc, config.contacto);
 }
 
-function renderAgradecimiento(doc: jsPDF, config: PdfConfig, logoData: string | null) {
+function renderAgradecimiento(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | null) {
   doc.addPage("portrait");
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
 
   drawDecorativeBlobs(doc);
 
-  // Decorative border
   doc.setDrawColor(...COLORS.darkGold);
   doc.setLineWidth(0.3);
   doc.rect(25, 25, w - 50, h - 50);
 
-  // Message
   doc.setFont("times", "bold");
   doc.setFontSize(22);
   doc.setTextColor(...COLORS.darkGold);
@@ -608,10 +668,12 @@ function renderAgradecimiento(doc: jsPDF, config: PdfConfig, logoData: string | 
     y += 6;
   }
 
-  // Logo at bottom
   if (logoData) {
     try {
-      doc.addImage(logoData, "PNG", w / 2 - 25, h * 0.72, 50, 25);
+      const logoH = 25;
+      const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
+      const logoW = logoH * aspectRatio;
+      doc.addImage(logoData.dataUrl, "PNG", w / 2 - logoW / 2, h * 0.72, logoW, logoH);
     } catch { /* */ }
   }
 }
@@ -620,10 +682,10 @@ function renderAgradecimiento(doc: jsPDF, config: PdfConfig, logoData: string | 
 export async function generatePdf(data: PdfData, config: PdfConfig) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-  // Load logo
-  let logoData: string | null = null;
+  // Load logo with dimensions
+  let logoData: LoadedImage | null = null;
   try {
-    logoData = await loadImage("/images/logo.png");
+    logoData = await loadImageWithDimensions("/images/logo.png");
   } catch { /* */ }
 
   // 1. Portada
@@ -638,7 +700,7 @@ export async function generatePdf(data: PdfData, config: PdfConfig) {
   if (config.estilo === "grid") {
     renderMenuGrid(doc, data, config, logoData);
   } else {
-    renderMenuLista(doc, data, config, logoData);
+    await renderMenuLista(doc, data, config, logoData);
   }
 
   // 4. Snacks y Colaciones
