@@ -205,7 +205,7 @@ function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: LoadedImag
   doc.setTextColor(...COLORS.black);
 
   const bullets = config.generalidades.split("\n").filter(Boolean);
-  drawBulletList(doc, bullets, 60, doc.internal.pageSize.getWidth() - MARGIN * 2);
+  drawBulletList(doc, bullets, 50, doc.internal.pageSize.getWidth() - MARGIN * 2);
 
   drawFooter(doc, config.contacto);
 }
@@ -491,7 +491,7 @@ function renderSnacks(doc: jsPDF, config: PdfConfig, logoData: LoadedImage | nul
   doc.setTextColor(...COLORS.black);
 
   const bullets = config.snacksColaciones.split("\n").filter(Boolean);
-  drawBulletList(doc, bullets, 60, doc.internal.pageSize.getWidth() - MARGIN * 2);
+  drawBulletList(doc, bullets, 50, doc.internal.pageSize.getWidth() - MARGIN * 2);
 
   drawFooter(doc, config.contacto);
 }
@@ -514,7 +514,7 @@ function renderRecomendaciones(doc: jsPDF, config: PdfConfig, logoData: LoadedIm
   doc.setTextColor(...COLORS.black);
 
   const bullets = config.recomendaciones.split("\n").filter(Boolean);
-  drawBulletList(doc, bullets, 60, doc.internal.pageSize.getWidth() - MARGIN * 2);
+  drawBulletList(doc, bullets, 50, doc.internal.pageSize.getWidth() - MARGIN * 2);
 
   drawFooter(doc, config.contacto);
 }
