@@ -94,8 +94,8 @@ function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
       const logoH = 35;
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
       const logoW = logoH * aspectRatio;
-      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 2, logoW, logoH);
-      lineY = 38;
+      doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, -2, logoW, logoH);
+      lineY = logoH - 2 + 1; // 1mm below logo bottom
     } catch { /* logo failed */ }
   }
 
@@ -104,7 +104,7 @@ function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
   doc.setLineWidth(0.8);
   doc.line(MARGIN, lineY, w - MARGIN, lineY);
   doc.setLineWidth(0.3);
-  doc.line(MARGIN, lineY + 2, w - MARGIN, lineY + 2);
+  doc.line(MARGIN, lineY + 1.5, w - MARGIN, lineY + 1.5);
 }
 
 function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] {
