@@ -247,7 +247,13 @@ function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData:
           if (item.tipo === "alimento") {
             const al = data.alimentos.find((a) => a.id === item.item_id);
             name = al?.nombre ?? "Alimento";
-            if (item.porcion) name += ` — ${item.porcion}`;
+            if (item.porcion) {
+              // Combine multiplier with base unit
+              const baseUnit = al?.porcion
+                ? al.porcion.replace(/^[\d.,/\s]+/, "").trim()
+                : "";
+              name += ` — ${item.porcion}${baseUnit ? " " + baseUnit : ""}`;
+            }
           } else {
             const rec = data.recetas.find((r) => r.id === item.item_id);
             name = rec?.nombre ?? "Receta";
