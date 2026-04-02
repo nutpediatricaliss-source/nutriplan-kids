@@ -224,11 +224,11 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
     doc.setFont("times", "bold");
     doc.setFontSize(16);
     doc.setTextColor(...COLORS.darkGold);
-    doc.text(`Semana ${week + 1}`, MARGIN, 35);
+    doc.text(`Semana ${week + 1}`, MARGIN, 48);
 
     const weekStart = week * 7 + 1;
     const weekEnd = Math.min(weekStart + 6, data.plan.dias);
-    let y = 45;
+    let y = 56;
 
     for (let day = weekStart; day <= weekEnd; day++) {
       if (y > 250) {
