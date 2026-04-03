@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +30,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
   DndContext,
   DragOverlay,
   closestCenter,
@@ -53,6 +60,9 @@ import {
   FileText,
   Save,
   BookmarkPlus,
+  AlertTriangle,
+  CheckCircle,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -135,6 +145,104 @@ function DroppableSlot({ id, children }: { id: string; children: React.ReactNode
     >
       {children}
     </div>
+  );
+}
+
+// ─── Copy Meal Popover ──────────────────────────────────────────────
+function CopyMealPopover({
+  sourceDia,
+  sourceTiempo,
+  totalDias,
+  tiemposComida,
+  onDuplicate,
+}: {
+  sourceDia: number;
+  sourceTiempo: string;
+  totalDias: number;
+  tiemposComida: string[];
+  onDuplicate: (dia: number, tiempo: string, targets: { dia: number; tiempo: string }[]) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [open, setOpen] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  const toggle = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleDuplicate = async () => {
+    const targets = Array.from(selected).map((k) => {
+      const [d, ...rest] = k.split("-");
+      return { dia: parseInt(d), tiempo: rest.join("-") };
+    });
+    if (targets.length === 0) return;
+    setDuplicating(true);
+    await onDuplicate(sourceDia, sourceTiempo, targets);
+    setDuplicating(false);
+    setSelected(new Set());
+    setOpen(false);
+  };
+
+  const totalWeeks = Math.ceil(totalDias / 7);
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelected(new Set()); }}>
+      <PopoverTrigger asChild>
+        <button className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" title="Copiar a otros tiempos">
+          <Copy className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="end">
+        <div className="px-3 py-2 border-b">
+          <p className="text-xs font-semibold">Duplicar a:</p>
+          <p className="text-[10px] text-muted-foreground">Selecciona los destinos</p>
+        </div>
+        <ScrollArea className="max-h-60">
+          <div className="p-2 space-y-2">
+            {Array.from({ length: totalWeeks }, (_, w) => {
+              const ws = w * 7 + 1;
+              const we = Math.min(ws + 6, totalDias);
+              return (
+                <div key={w}>
+                  <p className="text-[10px] font-semibold text-muted-foreground px-1 mb-1">Semana {w + 1}</p>
+                  {Array.from({ length: we - ws + 1 }, (_, di) => {
+                    const day = ws + di;
+                    return tiemposComida.map((tc) => {
+                      if (day === sourceDia && tc === sourceTiempo) return null;
+                      const key = `${day}-${tc}`;
+                      return (
+                        <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-accent/50 cursor-pointer">
+                          <Checkbox
+                            checked={selected.has(key)}
+                            onCheckedChange={() => toggle(key)}
+                          />
+                          <span>Día {day} — {tc}</span>
+                        </label>
+                      );
+                    });
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        <div className="border-t px-3 py-2">
+          <Button
+            size="sm"
+            className="w-full text-xs"
+            disabled={selected.size === 0 || duplicating}
+            onClick={handleDuplicate}
+          >
+            {duplicating ? "Duplicando..." : `Duplicar a ${selected.size} destino(s)`}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -395,6 +503,109 @@ export default function PlanCreator() {
     return recetas.find((r) => r.id === rid)?.nombre ?? "";
   };
 
+  // ─── Alarmas del menú ───────────────────────────────────────────────
+  type Alarma = { tipo: "vacio" | "repetida" | "variedad"; mensaje: string; dia?: number; color: string };
+
+  const alarmas = useMemo<Alarma[]>(() => {
+    if (!plan) return [];
+    const alerts: Alarma[] = [];
+
+    // 1. Tiempos vacíos
+    for (let d = 1; d <= plan.dias; d++) {
+      for (const tc of tiemposComida) {
+        const has = items.some((i) => i.dia === d && i.tiempo_comida === tc);
+        if (!has) {
+          alerts.push({ tipo: "vacio", mensaje: `Día ${d}: ${tc} está vacío`, dia: d, color: "text-yellow-600" });
+        }
+      }
+    }
+
+    // 2. Recetas repetidas >5 en todo el plan
+    const recetaCounts: Record<string, number> = {};
+    items.filter((i) => i.tipo === "receta").forEach((i) => {
+      recetaCounts[i.item_id] = (recetaCounts[i.item_id] || 0) + 1;
+    });
+    for (const [rid, count] of Object.entries(recetaCounts)) {
+      if (count > 5) {
+        const name = recetas.find((r) => r.id === rid)?.nombre ?? "Receta";
+        alerts.push({ tipo: "repetida", mensaje: `"${name}" se repite ${count} veces en el plan`, color: "text-orange-600" });
+      }
+    }
+
+    // 3. Recetas repetidas >3 por semana
+    const totalWeeksCalc = Math.ceil(plan.dias / 7);
+    for (let w = 0; w < totalWeeksCalc; w++) {
+      const weekStart = w * 7 + 1;
+      const weekEnd = Math.min(weekStart + 6, plan.dias);
+      const weekCounts: Record<string, number> = {};
+      items.filter((i) => i.tipo === "receta" && i.dia >= weekStart && i.dia <= weekEnd).forEach((i) => {
+        weekCounts[i.item_id] = (weekCounts[i.item_id] || 0) + 1;
+      });
+      for (const [rid, count] of Object.entries(weekCounts)) {
+        if (count > 3) {
+          const name = recetas.find((r) => r.id === rid)?.nombre ?? "Receta";
+          alerts.push({ tipo: "repetida", mensaje: `"${name}" se repite ${count} veces en semana ${w + 1}`, dia: weekStart, color: "text-orange-600" });
+        }
+      }
+    }
+
+    // 4. Poca variedad por grupo
+    const alimentoItems = items.filter((i) => i.tipo === "alimento");
+    if (alimentoItems.length >= 5) {
+      const grupoCounts: Record<string, number> = {};
+      alimentoItems.forEach((i) => {
+        const al = alimentos.find((a) => a.id === i.item_id);
+        if (al) grupoCounts[al.grupo] = (grupoCounts[al.grupo] || 0) + 1;
+      });
+      const total = alimentoItems.length;
+      for (const [grupo, count] of Object.entries(grupoCounts)) {
+        if (count / total > 0.6) {
+          alerts.push({ tipo: "variedad", mensaje: `El grupo "${grupo}" tiene ${Math.round((count / total) * 100)}% del plan — poca variedad`, color: "text-red-600" });
+        }
+      }
+    }
+
+    return alerts;
+  }, [plan, items, tiemposComida, alimentos, recetas]);
+
+  const [alarmasOpen, setAlarmasOpen] = useState(false);
+
+  // ─── Copiar/Pegar tiempos de comida ────────────────────────────────
+  const handleDuplicateMeal = async (sourceDia: number, sourceTiempo: string, targets: { dia: number; tiempo: string }[]) => {
+    if (!plan) return;
+    const sourceItems = items.filter((i) => i.dia === sourceDia && i.tiempo_comida === sourceTiempo);
+    if (sourceItems.length === 0) {
+      toast.error("No hay items para copiar");
+      return;
+    }
+
+    const allNew: any[] = [];
+    for (const target of targets) {
+      const existingCount = items.filter((i) => i.dia === target.dia && i.tiempo_comida === target.tiempo).length;
+      sourceItems.forEach((item, idx) => {
+        allNew.push({
+          plan_id: plan.id,
+          dia: target.dia,
+          tiempo_comida: target.tiempo,
+          tipo: item.tipo,
+          item_id: item.item_id,
+          porcion: item.porcion,
+          nota_menu: item.nota_menu,
+          incluir_detalle_pdf: item.incluir_detalle_pdf,
+          orden: existingCount + idx,
+        });
+      });
+    }
+
+    const { data, error } = await supabase.from("plan_items").insert(allNew).select();
+    if (error) {
+      toast.error("Error al duplicar");
+    } else {
+      setItems([...items, ...(data ?? [])]);
+      toast.success(`Copiado a ${targets.length} destino(s)`);
+    }
+  };
+
   if (loading || !plan) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -576,6 +787,45 @@ export default function PlanCreator() {
           })}
         </div>
 
+        {/* ─── Alarmas del menú ──────────────────────────────────────────── */}
+        <Collapsible open={alarmasOpen} onOpenChange={setAlarmasOpen}>
+          <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-accent/50"
+            style={{ borderColor: alarmas.length > 0 ? "hsl(var(--gold-dark))" : "hsl(var(--sage))", backgroundColor: alarmas.length > 0 ? "hsl(var(--gold-light) / 0.3)" : "hsl(var(--sage) / 0.2)" }}>
+            {alarmas.length > 0 ? (
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            ) : (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            )}
+            Alarmas del Menú
+            {alarmas.length > 0 && (
+              <Badge variant="secondary" className="ml-1 bg-orange-100 text-orange-700 text-xs">
+                {alarmas.length}
+              </Badge>
+            )}
+            {alarmas.length === 0 && (
+              <span className="text-xs font-normal text-green-600">— Todo bien</span>
+            )}
+            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform ${alarmasOpen ? "rotate-0" : "-rotate-90"}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            {alarmas.length > 0 && (
+              <div className="mt-1 space-y-1 rounded-lg border border-border/40 bg-background p-3 max-h-48 overflow-y-auto">
+                {alarmas.map((a, idx) => (
+                  <button
+                    key={idx}
+                    className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs text-left hover:bg-accent/50 transition-colors ${a.color}`}
+                    onClick={() => { if (a.dia) setCurrentDay(a.dia); }}
+                  >
+                    {a.tipo === "vacio" && <AlertTriangle className="h-3 w-3 shrink-0 text-yellow-500" />}
+                    {a.tipo === "repetida" && <AlertTriangle className="h-3 w-3 shrink-0 text-orange-500" />}
+                    {a.tipo === "variedad" && <AlertTriangle className="h-3 w-3 shrink-0 text-red-500" />}
+                    {a.mensaje}
+                  </button>
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
         {/* ─── Main layout: Sticky Sidebar (1/3) + Canvas (2/3) ──────────── */}
         <div className="flex gap-4">
           {/* Search Sidebar - sticky, 1/3 width */}
@@ -698,7 +948,16 @@ export default function PlanCreator() {
               return (
                 <Card key={tiempo} className="border-peach/60 bg-peach/20">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
+                      <CopyMealPopover
+                        sourceDia={currentDay}
+                        sourceTiempo={tiempo}
+                        totalDias={plan.dias}
+                        tiemposComida={tiemposComida}
+                        onDuplicate={handleDuplicateMeal}
+                      />
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <DroppableSlot id={`slot-${tiempo}`}>
