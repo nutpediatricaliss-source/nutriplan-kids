@@ -850,7 +850,16 @@ export default function PlanCreator() {
               return (
                 <Card key={tiempo} className="border-peach/60 bg-peach/20">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
+                      <CopyMealPopover
+                        sourceDia={currentDay}
+                        sourceTiempo={tiempo}
+                        totalDias={plan.dias}
+                        tiemposComida={tiemposComida}
+                        onDuplicate={handleDuplicateMeal}
+                      />
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <DroppableSlot id={`slot-${tiempo}`}>
