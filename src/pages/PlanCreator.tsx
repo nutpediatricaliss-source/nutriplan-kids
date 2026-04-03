@@ -405,6 +405,109 @@ export default function PlanCreator() {
     return recetas.find((r) => r.id === rid)?.nombre ?? "";
   };
 
+  // ─── Alarmas del menú ───────────────────────────────────────────────
+  type Alarma = { tipo: "vacio" | "repetida" | "variedad"; mensaje: string; dia?: number; color: string };
+
+  const alarmas = useMemo<Alarma[]>(() => {
+    if (!plan) return [];
+    const alerts: Alarma[] = [];
+
+    // 1. Tiempos vacíos
+    for (let d = 1; d <= plan.dias; d++) {
+      for (const tc of tiemposComida) {
+        const has = items.some((i) => i.dia === d && i.tiempo_comida === tc);
+        if (!has) {
+          alerts.push({ tipo: "vacio", mensaje: `Día ${d}: ${tc} está vacío`, dia: d, color: "text-yellow-600" });
+        }
+      }
+    }
+
+    // 2. Recetas repetidas >5 en todo el plan
+    const recetaCounts: Record<string, number> = {};
+    items.filter((i) => i.tipo === "receta").forEach((i) => {
+      recetaCounts[i.item_id] = (recetaCounts[i.item_id] || 0) + 1;
+    });
+    for (const [rid, count] of Object.entries(recetaCounts)) {
+      if (count > 5) {
+        const name = recetas.find((r) => r.id === rid)?.nombre ?? "Receta";
+        alerts.push({ tipo: "repetida", mensaje: `"${name}" se repite ${count} veces en el plan`, color: "text-orange-600" });
+      }
+    }
+
+    // 3. Recetas repetidas >3 por semana
+    const totalWeeksCalc = Math.ceil(plan.dias / 7);
+    for (let w = 0; w < totalWeeksCalc; w++) {
+      const weekStart = w * 7 + 1;
+      const weekEnd = Math.min(weekStart + 6, plan.dias);
+      const weekCounts: Record<string, number> = {};
+      items.filter((i) => i.tipo === "receta" && i.dia >= weekStart && i.dia <= weekEnd).forEach((i) => {
+        weekCounts[i.item_id] = (weekCounts[i.item_id] || 0) + 1;
+      });
+      for (const [rid, count] of Object.entries(weekCounts)) {
+        if (count > 3) {
+          const name = recetas.find((r) => r.id === rid)?.nombre ?? "Receta";
+          alerts.push({ tipo: "repetida", mensaje: `"${name}" se repite ${count} veces en semana ${w + 1}`, dia: weekStart, color: "text-orange-600" });
+        }
+      }
+    }
+
+    // 4. Poca variedad por grupo
+    const alimentoItems = items.filter((i) => i.tipo === "alimento");
+    if (alimentoItems.length >= 5) {
+      const grupoCounts: Record<string, number> = {};
+      alimentoItems.forEach((i) => {
+        const al = alimentos.find((a) => a.id === i.item_id);
+        if (al) grupoCounts[al.grupo] = (grupoCounts[al.grupo] || 0) + 1;
+      });
+      const total = alimentoItems.length;
+      for (const [grupo, count] of Object.entries(grupoCounts)) {
+        if (count / total > 0.6) {
+          alerts.push({ tipo: "variedad", mensaje: `El grupo "${grupo}" tiene ${Math.round((count / total) * 100)}% del plan — poca variedad`, color: "text-red-600" });
+        }
+      }
+    }
+
+    return alerts;
+  }, [plan, items, tiemposComida, alimentos, recetas]);
+
+  const [alarmasOpen, setAlarmasOpen] = useState(false);
+
+  // ─── Copiar/Pegar tiempos de comida ────────────────────────────────
+  const handleDuplicateMeal = async (sourceDia: number, sourceTiempo: string, targets: { dia: number; tiempo: string }[]) => {
+    if (!plan) return;
+    const sourceItems = items.filter((i) => i.dia === sourceDia && i.tiempo_comida === sourceTiempo);
+    if (sourceItems.length === 0) {
+      toast.error("No hay items para copiar");
+      return;
+    }
+
+    const allNew: any[] = [];
+    for (const target of targets) {
+      const existingCount = items.filter((i) => i.dia === target.dia && i.tiempo_comida === target.tiempo).length;
+      sourceItems.forEach((item, idx) => {
+        allNew.push({
+          plan_id: plan.id,
+          dia: target.dia,
+          tiempo_comida: target.tiempo,
+          tipo: item.tipo,
+          item_id: item.item_id,
+          porcion: item.porcion,
+          nota_menu: item.nota_menu,
+          incluir_detalle_pdf: item.incluir_detalle_pdf,
+          orden: existingCount + idx,
+        });
+      });
+    }
+
+    const { data, error } = await supabase.from("plan_items").insert(allNew).select();
+    if (error) {
+      toast.error("Error al duplicar");
+    } else {
+      setItems([...items, ...(data ?? [])]);
+      toast.success(`Copiado a ${targets.length} destino(s)`);
+    }
+  };
+
   if (loading || !plan) {
     return (
       <div className="flex items-center justify-center py-20">
