@@ -1,39 +1,51 @@
 
+# Plan: Alarmas del Menú + Copiar/Pegar con Selección Múltiple
 
-# Plan: Mejoras al PDF — Recetas continuas, porciones completas, y alternativa de diseño
+## 1. Sección de Alarmas
 
-## Problemas identificados
+Panel colapsable debajo de la navegación por días/semanas que analiza `items` con `useMemo`:
 
-1. **Recetas en páginas separadas**: Línea 454 hace `doc.addPage()` por cada receta. Se debe cambiar a flujo continuo, solo agregando página cuando no hay espacio.
+- **Tiempos vacíos**: detecta días donde algún tiempo de comida no tiene items → alerta amarilla
+- **Receta repetida >5 veces en todo el plan** → alerta naranja
+- **Receta repetida >3 veces por semana** → alerta naranja
+- **Poca variedad por grupo**: si un grupo de alimento supera 60% del total → alerta roja
+- Si todo está bien → check verde "Todo bien"
+- Cada alerta es clickeable y navega al día correspondiente
 
-2. **Porciones sin unidad en estilo lista**: Línea 250 muestra `item.porcion` (el campo del plan_item, que es solo el multiplicador como "2"). Falta combinar con `alimento.porcion` (la unidad base como "1 cdita") para mostrar algo como "2 cditas".
+### UI
+- Ícono `AlertTriangle` con badge numérico, panel colapsable
+- Colores: amarillo (vacíos), naranja (repeticiones), rojo (variedad)
 
-3. **Diseño del encabezado y control visual**: jsPDF dibuja todo píxel por píxel, lo cual hace muy difícil replicar diseños exactos. 
+## 2. Copiar/Pegar con Selección Múltiple (Popover)
 
-## Propuesta de diseño: migrar a HTML-to-PDF
+En lugar de un simple copiar y luego pegar, el flujo será:
 
-**Recomendación**: Cambiar el motor de generación de `jsPDF` (dibujo manual) a **html2pdf.js** (HTML + CSS → PDF). Esto permite:
-- Escribir el diseño como HTML/CSS normal (flexbox, bordes, colores, fuentes)
-- Mucho más fácil de iterar: puedes describir cambios como "mueve el logo a la derecha" y se traduce a CSS
-- Soporte nativo de imágenes, tablas, y tipografía
-- Puedes incluso previsualizar el diseño en el navegador antes de exportar
+1. Al hacer clic en un ícono `Copy` en el header de cada Card de tiempo de comida, se abre un **Popover** (o Dialog pequeño)
+2. El Popover muestra una lista de checkboxes con **todos los slots disponibles** del plan, agrupados por semana y día: "Día 1 — Desayuno", "Día 1 — Colación AM", etc. (excluyendo el slot actual)
+3. El usuario marca los destinos deseados (selección múltiple)
+4. Hace clic en "Duplicar" → se insertan en la DB todos los items del slot origen en cada slot destino seleccionado
+5. Toast de confirmación: "Copiado a X destinos"
 
-Sin embargo, esto es un cambio grande. **Para esta iteración**, propongo arreglar los 2 bugs concretos con el motor actual y dejar la migración a html2pdf.js como siguiente paso si lo deseas.
+### Estado necesario
+- `copySource: { dia: number; tiempo: string } | null` — controla qué Popover está abierto
+- Los destinos se manejan como state local del Popover
 
-## Cambios en `src/lib/pdfGenerator.ts`
+### Lógica de duplicado
+```
+Para cada destino seleccionado (dia, tiempo):
+  → Para cada item del slot origen:
+    → insert en plan_items con:
+      - plan_id, tipo, item_id, porcion, nota_menu, incluir_detalle_pdf del original
+      - dia: día destino
+      - tiempo_comida: tiempo destino
+      - orden: items existentes en destino.length + index
+```
 
-### Fix 1: Recetas continuas (sin salto de página por receta)
-- Eliminar `doc.addPage()` al inicio de cada receta
-- En su lugar, iniciar la primera receta en una nueva página con título "Recetas"
-- Para las siguientes recetas, verificar si hay espacio suficiente (~60mm mínimo); si no, hacer salto de página
-- Agregar una línea separadora dorada entre recetas
+## Archivo a modificar
+- **`src/pages/PlanCreator.tsx`** — ambas funcionalidades (alarmas como `useMemo`, copiar/pegar como Popover con checkboxes)
 
-### Fix 2: Porciones con unidad en estilo lista
-- En `renderMenuLista` (línea 245-255), cuando `item.tipo === "alimento"` y hay `item.porcion`:
-  - Buscar `alimento.porcion` (ej. "1 cdita") para extraer la unidad
-  - Combinar: si porción base es "1 cdita" y el usuario puso "2", mostrar "2 cditas"
-  - Lógica: extraer la parte textual de `alimento.porcion` (después del número) y concatenar con el valor de `item.porcion`
-
-### Archivo a modificar
-- **`src/lib/pdfGenerator.ts`** — ambos fixes
-
+## Imports a añadir
+- `AlertTriangle`, `CheckCircle`, `Copy` de lucide-react
+- `Popover`, `PopoverTrigger`, `PopoverContent` de `@/components/ui/popover`
+- `Checkbox` de `@/components/ui/checkbox`
+- `ScrollArea` de `@/components/ui/scroll-area`
