@@ -148,6 +148,104 @@ function DroppableSlot({ id, children }: { id: string; children: React.ReactNode
   );
 }
 
+// ─── Copy Meal Popover ──────────────────────────────────────────────
+function CopyMealPopover({
+  sourceDia,
+  sourceTiempo,
+  totalDias,
+  tiemposComida,
+  onDuplicate,
+}: {
+  sourceDia: number;
+  sourceTiempo: string;
+  totalDias: number;
+  tiemposComida: string[];
+  onDuplicate: (dia: number, tiempo: string, targets: { dia: number; tiempo: string }[]) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [open, setOpen] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  const toggle = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleDuplicate = async () => {
+    const targets = Array.from(selected).map((k) => {
+      const [d, ...rest] = k.split("-");
+      return { dia: parseInt(d), tiempo: rest.join("-") };
+    });
+    if (targets.length === 0) return;
+    setDuplicating(true);
+    await onDuplicate(sourceDia, sourceTiempo, targets);
+    setDuplicating(false);
+    setSelected(new Set());
+    setOpen(false);
+  };
+
+  const totalWeeks = Math.ceil(totalDias / 7);
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelected(new Set()); }}>
+      <PopoverTrigger asChild>
+        <button className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" title="Copiar a otros tiempos">
+          <Copy className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="end">
+        <div className="px-3 py-2 border-b">
+          <p className="text-xs font-semibold">Duplicar a:</p>
+          <p className="text-[10px] text-muted-foreground">Selecciona los destinos</p>
+        </div>
+        <ScrollArea className="max-h-60">
+          <div className="p-2 space-y-2">
+            {Array.from({ length: totalWeeks }, (_, w) => {
+              const ws = w * 7 + 1;
+              const we = Math.min(ws + 6, totalDias);
+              return (
+                <div key={w}>
+                  <p className="text-[10px] font-semibold text-muted-foreground px-1 mb-1">Semana {w + 1}</p>
+                  {Array.from({ length: we - ws + 1 }, (_, di) => {
+                    const day = ws + di;
+                    return tiemposComida.map((tc) => {
+                      if (day === sourceDia && tc === sourceTiempo) return null;
+                      const key = `${day}-${tc}`;
+                      return (
+                        <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-accent/50 cursor-pointer">
+                          <Checkbox
+                            checked={selected.has(key)}
+                            onCheckedChange={() => toggle(key)}
+                          />
+                          <span>Día {day} — {tc}</span>
+                        </label>
+                      );
+                    });
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        <div className="border-t px-3 py-2">
+          <Button
+            size="sm"
+            className="w-full text-xs"
+            disabled={selected.size === 0 || duplicating}
+            onClick={handleDuplicate}
+          >
+            {duplicating ? "Duplicando..." : `Duplicar a ${selected.size} destino(s)`}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────
 export default function PlanCreator() {
   const { id } = useParams<{ id: string }>();
