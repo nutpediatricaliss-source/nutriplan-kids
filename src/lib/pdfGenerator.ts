@@ -87,21 +87,23 @@ function drawFooter(doc: jsPDF, contacto: string) {
 function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
   const w = doc.internal.pageSize.getWidth();
 
-  // Clean double golden line
-  doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(0.8);
-  doc.line(MARGIN, 12, w - MARGIN, 12);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, 14, w - MARGIN, 14);
-
+  let logoBottom = 12;
   if (logoData) {
     try {
       const logoH = 25;
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
       const logoW = logoH * aspectRatio;
       doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 0.5, logoW, logoH);
+      logoBottom = 0.5 + logoH + 1;
     } catch { /* logo failed */ }
   }
+
+  // Clean double golden line just below the logo
+  doc.setDrawColor(...COLORS.gold);
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, logoBottom, w - MARGIN, logoBottom);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, logoBottom + 2, w - MARGIN, logoBottom + 2);
 }
 
 function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] {
