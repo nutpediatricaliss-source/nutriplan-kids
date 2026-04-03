@@ -94,7 +94,7 @@ function addHeaderWithLogo(doc: jsPDF, logoData: LoadedImage | null) {
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
       const logoW = logoH * aspectRatio;
       doc.addImage(logoData.dataUrl, "PNG", w - MARGIN - logoW, 0.5, logoW, logoH);
-      logoBottom = 0.5 + logoH + 1;
+      logoBottom = 0.5 + logoH + 0.2;
     } catch { /* logo failed */ }
   }
 
