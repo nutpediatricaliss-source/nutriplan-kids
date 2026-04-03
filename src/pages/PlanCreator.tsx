@@ -689,6 +689,45 @@ export default function PlanCreator() {
           })}
         </div>
 
+        {/* ─── Alarmas del menú ──────────────────────────────────────────── */}
+        <Collapsible open={alarmasOpen} onOpenChange={setAlarmasOpen}>
+          <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-accent/50"
+            style={{ borderColor: alarmas.length > 0 ? "hsl(var(--gold-dark))" : "hsl(var(--sage))", backgroundColor: alarmas.length > 0 ? "hsl(var(--gold-light) / 0.3)" : "hsl(var(--sage) / 0.2)" }}>
+            {alarmas.length > 0 ? (
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+            ) : (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            )}
+            Alarmas del Menú
+            {alarmas.length > 0 && (
+              <Badge variant="secondary" className="ml-1 bg-orange-100 text-orange-700 text-xs">
+                {alarmas.length}
+              </Badge>
+            )}
+            {alarmas.length === 0 && (
+              <span className="text-xs font-normal text-green-600">— Todo bien</span>
+            )}
+            <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform ${alarmasOpen ? "rotate-0" : "-rotate-90"}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            {alarmas.length > 0 && (
+              <div className="mt-1 space-y-1 rounded-lg border border-border/40 bg-background p-3 max-h-48 overflow-y-auto">
+                {alarmas.map((a, idx) => (
+                  <button
+                    key={idx}
+                    className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs text-left hover:bg-accent/50 transition-colors ${a.color}`}
+                    onClick={() => { if (a.dia) setCurrentDay(a.dia); }}
+                  >
+                    {a.tipo === "vacio" && <AlertTriangle className="h-3 w-3 shrink-0 text-yellow-500" />}
+                    {a.tipo === "repetida" && <AlertTriangle className="h-3 w-3 shrink-0 text-orange-500" />}
+                    {a.tipo === "variedad" && <AlertTriangle className="h-3 w-3 shrink-0 text-red-500" />}
+                    {a.mensaje}
+                  </button>
+                ))}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
         {/* ─── Main layout: Sticky Sidebar (1/3) + Canvas (2/3) ──────────── */}
         <div className="flex gap-4">
           {/* Search Sidebar - sticky, 1/3 width */}
