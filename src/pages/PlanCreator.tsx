@@ -1001,13 +1001,22 @@ export default function PlanCreator() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
-                      <CopyMealPopover
-                        sourceDia={currentDay}
-                        sourceTiempo={tiempo}
-                        totalDias={plan.dias}
-                        tiemposComida={tiemposComida}
-                        onDuplicate={handleDuplicateMeal}
-                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => addCustomItem(tiempo)}
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                          title="Agregar alimento personalizado"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                        <CopyMealPopover
+                          sourceDia={currentDay}
+                          sourceTiempo={tiempo}
+                          totalDias={plan.dias}
+                          tiemposComida={tiemposComida}
+                          onDuplicate={handleDuplicateMeal}
+                        />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
