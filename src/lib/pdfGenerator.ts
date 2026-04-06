@@ -286,7 +286,11 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
 
         for (const item of dayItems) {
           let name = "";
-          if (item.tipo === "alimento") {
+          if ((item as any).nombre_override) {
+            name = (item as any).nombre_override;
+          } else if (item.tipo === "personalizado") {
+            name = "Alimento personalizado";
+          } else if (item.tipo === "alimento") {
             const al = data.alimentos.find((a) => a.id === item.item_id);
             name = al?.nombre ?? "Alimento";
             if (item.porcion) {
@@ -298,8 +302,8 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
           } else {
             const rec = data.recetas.find((r) => r.id === item.item_id);
             name = rec?.nombre ?? "Receta";
-            if (item.nota_menu) name += ` (${item.nota_menu})`;
           }
+          if (item.nota_menu) name += ` (${item.nota_menu})`;
 
           const lines = splitTextToLines(doc, `• ${name}`, textMaxW - 10);
           for (const l of lines) {
@@ -429,7 +433,11 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
         for (const item of dayItems) {
           if (itemY > rowY + rowH - 2) break;
           let name = "";
-          if (item.tipo === "alimento") {
+          if ((item as any).nombre_override) {
+            name = (item as any).nombre_override;
+          } else if (item.tipo === "personalizado") {
+            name = "Personalizado";
+          } else if (item.tipo === "alimento") {
             const al = data.alimentos.find((a) => a.id === item.item_id);
             name = al?.nombre ?? "Alimento";
           } else {

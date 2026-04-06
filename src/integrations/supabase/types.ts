@@ -66,6 +66,7 @@ export type Database = {
           id: string
           incluir_detalle_pdf: boolean | null
           item_id: string
+          nombre_override: string | null
           nota_menu: string | null
           orden: number
           plan_id: string
@@ -79,6 +80,7 @@ export type Database = {
           id?: string
           incluir_detalle_pdf?: boolean | null
           item_id: string
+          nombre_override?: string | null
           nota_menu?: string | null
           orden?: number
           plan_id: string
@@ -92,6 +94,7 @@ export type Database = {
           id?: string
           incluir_detalle_pdf?: boolean | null
           item_id?: string
+          nombre_override?: string | null
           nota_menu?: string | null
           orden?: number
           plan_id?: string

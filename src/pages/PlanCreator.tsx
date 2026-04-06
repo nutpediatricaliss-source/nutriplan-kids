@@ -64,6 +64,8 @@ import {
   CheckCircle,
   Copy,
   ChevronRight,
+  Pencil,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -495,6 +497,8 @@ export default function PlanCreator() {
   };
 
   const getItemName = (item: PlanItem) => {
+    if ((item as any).nombre_override) return (item as any).nombre_override;
+    if (item.tipo === "personalizado") return "Alimento personalizado";
     if (item.tipo === "alimento") {
       return alimentos.find((a) => a.id === item.item_id)?.nombre ?? "Alimento";
     }
@@ -589,6 +593,34 @@ export default function PlanCreator() {
 
   const [alarmasOpen, setAlarmasOpen] = useState(false);
 
+  // ─── Edición inline de nombre y nota ────────────────────────────────
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+
+  // ─── Alimento personalizado ─────────────────────────────────────────
+  const addCustomItem = async (tiempoComida: string) => {
+    if (!plan) return;
+    const dayItems = items.filter((i) => i.dia === currentDay && i.tiempo_comida === tiempoComida);
+    const newItem: any = {
+      plan_id: plan.id,
+      dia: currentDay,
+      tiempo_comida: tiempoComida,
+      tipo: "personalizado",
+      item_id: crypto.randomUUID(),
+      orden: dayItems.length,
+      nombre_override: "",
+      nota_menu: "",
+      incluir_detalle_pdf: false,
+    };
+    const { data, error } = await supabase.from("plan_items").insert(newItem).select().single();
+    if (error) {
+      toast.error("Error al agregar item personalizado");
+    } else if (data) {
+      setItems([...items, data]);
+      setEditingNameId(data.id);
+    }
+  };
+
   // ─── Copiar/Pegar tiempos de comida ────────────────────────────────
   const handleDuplicateMeal = async (sourceDia: number, sourceTiempo: string, targets: { dia: number; tiempo: string }[]) => {
     if (!plan) return;
@@ -611,6 +643,7 @@ export default function PlanCreator() {
           porcion: item.porcion,
           nota_menu: item.nota_menu,
           incluir_detalle_pdf: item.incluir_detalle_pdf,
+          nombre_override: (item as any).nombre_override ?? null,
           orden: existingCount + idx,
         });
       });
@@ -969,13 +1002,22 @@ export default function PlanCreator() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
-                      <CopyMealPopover
-                        sourceDia={currentDay}
-                        sourceTiempo={tiempo}
-                        totalDias={plan.dias}
-                        tiemposComida={tiemposComida}
-                        onDuplicate={handleDuplicateMeal}
-                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => addCustomItem(tiempo)}
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                          title="Agregar alimento personalizado"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                        <CopyMealPopover
+                          sourceDia={currentDay}
+                          sourceTiempo={tiempo}
+                          totalDias={plan.dias}
+                          tiemposComida={tiemposComida}
+                          onDuplicate={handleDuplicateMeal}
+                        />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -994,7 +1036,56 @@ export default function PlanCreator() {
                                 className="flex items-start gap-2 rounded-lg border bg-background p-2.5"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium">{getItemName(item)}</p>
+                                  <div className="flex items-center gap-1">
+                                    {editingNameId === item.id ? (
+                                      <DebouncedInput
+                                        value={(item as any).nombre_override ?? ""}
+                                        onChange={(v) => {
+                                          updateItem(item.id, { nombre_override: v } as any);
+                                          setEditingNameId(null);
+                                        }}
+                                        onBlur={() => setEditingNameId(null)}
+                                        placeholder="Nombre personalizado..."
+                                        className="h-6 text-xs flex-1"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <>
+                                        <p className="text-sm font-medium truncate">{getItemName(item)}</p>
+                                        {item.tipo === "personalizado" && (
+                                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                                            Personalizado
+                                          </Badge>
+                                        )}
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => setEditingNameId(editingNameId === item.id ? null : item.id)}
+                                      className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                                      title="Editar nombre"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingNoteId(editingNoteId === item.id ? null : item.id)}
+                                      className={`shrink-0 rounded p-0.5 transition-colors ${
+                                        item.nota_menu ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                                      }`}
+                                      title="Nota para el menú"
+                                    >
+                                      <StickyNote className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  {editingNoteId === item.id && (
+                                    <DebouncedInput
+                                      value={item.nota_menu ?? ""}
+                                      onChange={(v) => updateItem(item.id, { nota_menu: v })}
+                                      placeholder="Nota para el menú..."
+                                      className="h-7 text-xs mt-1"
+                                      autoFocus
+                                    />
+                                  )}
 
                                   {item.tipo === "alimento" && modoPorciones && (() => {
                                     const baseAlimento = alimentos.find((a) => a.id === item.item_id);
@@ -1028,14 +1119,9 @@ export default function PlanCreator() {
 
                                   {item.tipo === "receta" && (
                                     <div className="mt-1 space-y-1.5">
-                                      <DebouncedInput
-                                        value={item.nota_menu ?? ""}
-                                        onChange={(v) =>
-                                          updateItem(item.id, { nota_menu: v })
-                                        }
-                                        placeholder="Nota para el menú..."
-                                        className="h-7 text-xs"
-                                      />
+                                      {editingNoteId !== item.id && item.nota_menu && (
+                                        <p className="text-xs text-muted-foreground italic">📝 {item.nota_menu}</p>
+                                      )}
                                       <div className="flex items-center gap-2">
                                         <Switch
                                           checked={item.incluir_detalle_pdf ?? true}
