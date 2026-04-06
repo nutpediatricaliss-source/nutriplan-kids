@@ -63,6 +63,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Copy,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
