@@ -1035,7 +1035,56 @@ export default function PlanCreator() {
                                 className="flex items-start gap-2 rounded-lg border bg-background p-2.5"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium">{getItemName(item)}</p>
+                                  <div className="flex items-center gap-1">
+                                    {editingNameId === item.id ? (
+                                      <DebouncedInput
+                                        value={(item as any).nombre_override ?? ""}
+                                        onChange={(v) => {
+                                          updateItem(item.id, { nombre_override: v } as any);
+                                          setEditingNameId(null);
+                                        }}
+                                        onBlur={() => setEditingNameId(null)}
+                                        placeholder="Nombre personalizado..."
+                                        className="h-6 text-xs flex-1"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <>
+                                        <p className="text-sm font-medium truncate">{getItemName(item)}</p>
+                                        {item.tipo === "personalizado" && (
+                                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
+                                            Personalizado
+                                          </Badge>
+                                        )}
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => setEditingNameId(editingNameId === item.id ? null : item.id)}
+                                      className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                                      title="Editar nombre"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingNoteId(editingNoteId === item.id ? null : item.id)}
+                                      className={`shrink-0 rounded p-0.5 transition-colors ${
+                                        item.nota_menu ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                                      }`}
+                                      title="Nota para el menú"
+                                    >
+                                      <StickyNote className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  {editingNoteId === item.id && (
+                                    <DebouncedInput
+                                      value={item.nota_menu ?? ""}
+                                      onChange={(v) => updateItem(item.id, { nota_menu: v })}
+                                      placeholder="Nota para el menú..."
+                                      className="h-7 text-xs mt-1"
+                                      autoFocus
+                                    />
+                                  )}
 
                                   {item.tipo === "alimento" && modoPorciones && (() => {
                                     const baseAlimento = alimentos.find((a) => a.id === item.item_id);
@@ -1069,14 +1118,9 @@ export default function PlanCreator() {
 
                                   {item.tipo === "receta" && (
                                     <div className="mt-1 space-y-1.5">
-                                      <DebouncedInput
-                                        value={item.nota_menu ?? ""}
-                                        onChange={(v) =>
-                                          updateItem(item.id, { nota_menu: v })
-                                        }
-                                        placeholder="Nota para el menú..."
-                                        className="h-7 text-xs"
-                                      />
+                                      {editingNoteId !== item.id && item.nota_menu && (
+                                        <p className="text-xs text-muted-foreground italic">📝 {item.nota_menu}</p>
+                                      )}
                                       <div className="flex items-center gap-2">
                                         <Switch
                                           checked={item.incluir_detalle_pdf ?? true}
