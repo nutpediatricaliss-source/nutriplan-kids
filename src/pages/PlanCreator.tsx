@@ -497,6 +497,8 @@ export default function PlanCreator() {
   };
 
   const getItemName = (item: PlanItem) => {
+    if ((item as any).nombre_override) return (item as any).nombre_override;
+    if (item.tipo === "personalizado") return "Alimento personalizado";
     if (item.tipo === "alimento") {
       return alimentos.find((a) => a.id === item.item_id)?.nombre ?? "Alimento";
     }
