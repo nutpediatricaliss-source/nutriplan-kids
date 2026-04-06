@@ -433,7 +433,11 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
         for (const item of dayItems) {
           if (itemY > rowY + rowH - 2) break;
           let name = "";
-          if (item.tipo === "alimento") {
+          if ((item as any).nombre_override) {
+            name = (item as any).nombre_override;
+          } else if (item.tipo === "personalizado") {
+            name = "Personalizado";
+          } else if (item.tipo === "alimento") {
             const al = data.alimentos.find((a) => a.id === item.item_id);
             name = al?.nombre ?? "Alimento";
           } else {
