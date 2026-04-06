@@ -64,6 +64,8 @@ import {
   CheckCircle,
   Copy,
   ChevronRight,
+  Pencil,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 
