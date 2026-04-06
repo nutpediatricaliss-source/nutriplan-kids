@@ -1,51 +1,68 @@
 
-# Plan: Alarmas del Menú + Copiar/Pegar con Selección Múltiple
 
-## 1. Sección de Alarmas
+# Plan: Nombre editable, notas en alimentos, y alimento personalizado
 
-Panel colapsable debajo de la navegación por días/semanas que analiza `items` con `useMemo`:
+## Resumen
+Tres mejoras al canvas del PlanCreator:
+1. Ícono para editar el nombre visible de cualquier item (sin afectar la DB original)
+2. Notas para el menú en alimentos (igual que recetas)
+3. Botón para agregar "alimento personalizado" (texto libre) en cada tiempo de comida
 
-- **Tiempos vacíos**: detecta días donde algún tiempo de comida no tiene items → alerta amarilla
-- **Receta repetida >5 veces en todo el plan** → alerta naranja
-- **Receta repetida >3 veces por semana** → alerta naranja
-- **Poca variedad por grupo**: si un grupo de alimento supera 60% del total → alerta roja
-- Si todo está bien → check verde "Todo bien"
-- Cada alerta es clickeable y navega al día correspondiente
+## Migración SQL
 
-### UI
-- Ícono `AlertTriangle` con badge numérico, panel colapsable
-- Colores: amarillo (vacíos), naranja (repeticiones), rojo (variedad)
-
-## 2. Copiar/Pegar con Selección Múltiple (Popover)
-
-En lugar de un simple copiar y luego pegar, el flujo será:
-
-1. Al hacer clic en un ícono `Copy` en el header de cada Card de tiempo de comida, se abre un **Popover** (o Dialog pequeño)
-2. El Popover muestra una lista de checkboxes con **todos los slots disponibles** del plan, agrupados por semana y día: "Día 1 — Desayuno", "Día 1 — Colación AM", etc. (excluyendo el slot actual)
-3. El usuario marca los destinos deseados (selección múltiple)
-4. Hace clic en "Duplicar" → se insertan en la DB todos los items del slot origen en cada slot destino seleccionado
-5. Toast de confirmación: "Copiado a X destinos"
-
-### Estado necesario
-- `copySource: { dia: number; tiempo: string } | null` — controla qué Popover está abierto
-- Los destinos se manejan como state local del Popover
-
-### Lógica de duplicado
-```
-Para cada destino seleccionado (dia, tiempo):
-  → Para cada item del slot origen:
-    → insert en plan_items con:
-      - plan_id, tipo, item_id, porcion, nota_menu, incluir_detalle_pdf del original
-      - dia: día destino
-      - tiempo_comida: tiempo destino
-      - orden: items existentes en destino.length + index
+```sql
+-- Nombre personalizado por item (no afecta tabla original del alimento/receta)
+ALTER TABLE plan_items ADD COLUMN nombre_override text DEFAULT NULL;
 ```
 
-## Archivo a modificar
-- **`src/pages/PlanCreator.tsx`** — ambas funcionalidades (alarmas como `useMemo`, copiar/pegar como Popover con checkboxes)
+El campo `nota_menu` ya existe en `plan_items` — solo hay que mostrarlo también para alimentos (actualmente solo se muestra para recetas).
 
-## Imports a añadir
-- `AlertTriangle`, `CheckCircle`, `Copy` de lucide-react
-- `Popover`, `PopoverTrigger`, `PopoverContent` de `@/components/ui/popover`
-- `Checkbox` de `@/components/ui/checkbox`
-- `ScrollArea` de `@/components/ui/scroll-area`
+Para los alimentos personalizados, se usará `tipo = 'personalizado'` con `item_id` generado como UUID random y el nombre guardado en `nombre_override`.
+
+## Cambios en `src/pages/PlanCreator.tsx`
+
+### 1. Nombre editable con ícono
+- Añadir ícono `Pencil` (lucide) junto al nombre del item
+- Al hacer clic, convierte el nombre en un `DebouncedInput` que guarda en `nombre_override`
+- `getItemName()` prioriza `item.nombre_override` sobre el nombre de la DB
+- El ícono es discreto (tamaño pequeño, color muted)
+
+### 2. Nota para el menú en alimentos
+- Añadir ícono `StickyNote` junto al nombre del alimento
+- Al hacer clic, muestra/oculta un `DebouncedInput` para `nota_menu`
+- Mismo comportamiento que ya existe para recetas, pero activable con ícono para ahorrar espacio
+
+### 3. Alimento personalizado (texto libre)
+- Añadir botón `Plus` con texto "Personalizado" en el header de cada Card de tiempo de comida (junto al ícono de copiar)
+- Al hacer clic, inserta un nuevo `plan_item` con `tipo: "personalizado"`, `item_id: crypto.randomUUID()`, y abre inline el campo de nombre para escribir
+- Se muestra igual que los demás items pero con un badge "Personalizado"
+- El nombre se guarda en `nombre_override`
+
+### UI compacta para cada item
+```text
+┌─────────────────────────────────────────────┐
+│ [✏️] Nombre del item [📝] [🗑️]             │
+│   (porción si aplica)                        │
+│   (macros si aplica)                         │
+│   [nota si está visible]                     │
+└─────────────────────────────────────────────┘
+```
+- ✏️ = Pencil (editar nombre) — toggle inline input
+- 📝 = StickyNote (nota) — toggle inline input  
+- 🗑️ = X (eliminar)
+
+### Lógica `getItemName` actualizada
+```typescript
+const getItemName = (item: PlanItem) => {
+  if (item.nombre_override) return item.nombre_override;
+  if (item.tipo === "personalizado") return "Alimento personalizado";
+  if (item.tipo === "alimento") return alimentos.find(a => a.id === item.item_id)?.nombre ?? "Alimento";
+  return recetas.find(r => r.id === item.item_id)?.nombre ?? "Receta";
+};
+```
+
+### Archivos a modificar
+- **Migración SQL**: agregar columna `nombre_override` a `plan_items`
+- **`src/pages/PlanCreator.tsx`**: UI de items (ícono editar nombre, ícono nota, botón personalizado), lógica de insert personalizado, `getItemName` actualizado
+- **`src/lib/pdfGenerator.ts`**: usar `nombre_override` cuando exista al renderizar items
+
