@@ -608,7 +608,8 @@ export default function PlanCreator() {
       tipo: "personalizado",
       item_id: crypto.randomUUID(),
       orden: dayItems.length,
-      nombre_override: "",
+      nombre_override: "Personalizado",
+      porcion: "",
       nota_menu: "",
       incluir_detalle_pdf: false,
     };
@@ -1039,7 +1040,7 @@ export default function PlanCreator() {
                                   <div className="flex items-center gap-1">
                                     {editingNameId === item.id ? (
                                       <DebouncedInput
-                                        value={(item as any).nombre_override ?? ""}
+                                        value={(item as any).nombre_override || getItemName(item)}
                                         onChange={(v) => {
                                           updateItem(item.id, { nombre_override: v } as any);
                                           setEditingNameId(null);
