@@ -1,0 +1,1 @@
+ALTER TABLE plan_items ADD COLUMN nombre_override text DEFAULT NULL;
