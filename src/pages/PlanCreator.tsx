@@ -593,6 +593,34 @@ export default function PlanCreator() {
 
   const [alarmasOpen, setAlarmasOpen] = useState(false);
 
+  // ─── Edición inline de nombre y nota ────────────────────────────────
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+
+  // ─── Alimento personalizado ─────────────────────────────────────────
+  const addCustomItem = async (tiempoComida: string) => {
+    if (!plan) return;
+    const dayItems = items.filter((i) => i.dia === currentDay && i.tiempo_comida === tiempoComida);
+    const newItem: any = {
+      plan_id: plan.id,
+      dia: currentDay,
+      tiempo_comida: tiempoComida,
+      tipo: "personalizado",
+      item_id: crypto.randomUUID(),
+      orden: dayItems.length,
+      nombre_override: "",
+      nota_menu: "",
+      incluir_detalle_pdf: false,
+    };
+    const { data, error } = await supabase.from("plan_items").insert(newItem).select().single();
+    if (error) {
+      toast.error("Error al agregar item personalizado");
+    } else if (data) {
+      setItems([...items, data]);
+      setEditingNameId(data.id);
+    }
+  };
+
   // ─── Copiar/Pegar tiempos de comida ────────────────────────────────
   const handleDuplicateMeal = async (sourceDia: number, sourceTiempo: string, targets: { dia: number; tiempo: string }[]) => {
     if (!plan) return;
