@@ -63,6 +63,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Copy,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -189,9 +190,19 @@ function CopyMealPopover({
   };
 
   const totalWeeks = Math.ceil(totalDias / 7);
+  const [collapsedWeeks, setCollapsedWeeks] = useState<Set<number>>(new Set());
+
+  const toggleWeek = (w: number) => {
+    setCollapsedWeeks((prev) => {
+      const next = new Set(prev);
+      if (next.has(w)) next.delete(w);
+      else next.add(w);
+      return next;
+    });
+  };
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelected(new Set()); }}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setSelected(new Set()); setCollapsedWeeks(new Set()); } }}>
       <PopoverTrigger asChild>
         <button className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" title="Copiar a otros tiempos">
           <Copy className="h-3.5 w-3.5" />
@@ -202,21 +213,29 @@ function CopyMealPopover({
           <p className="text-xs font-semibold">Duplicar a:</p>
           <p className="text-[10px] text-muted-foreground">Selecciona los destinos</p>
         </div>
-        <ScrollArea className="max-h-60">
-          <div className="p-2 space-y-2">
+        <ScrollArea className="h-64">
+          <div className="p-2 space-y-1">
             {Array.from({ length: totalWeeks }, (_, w) => {
               const ws = w * 7 + 1;
               const we = Math.min(ws + 6, totalDias);
+              const isCollapsed = collapsedWeeks.has(w);
               return (
                 <div key={w}>
-                  <p className="text-[10px] font-semibold text-muted-foreground px-1 mb-1">Semana {w + 1}</p>
-                  {Array.from({ length: we - ws + 1 }, (_, di) => {
+                  <button
+                    type="button"
+                    onClick={() => toggleWeek(w)}
+                    className="flex items-center gap-1 w-full text-[10px] font-semibold text-muted-foreground px-1 py-1 hover:bg-accent/50 rounded transition-colors"
+                  >
+                    <ChevronRight className={`h-3 w-3 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
+                    Semana {w + 1} (Días {ws}–{we})
+                  </button>
+                  {!isCollapsed && Array.from({ length: we - ws + 1 }, (_, di) => {
                     const day = ws + di;
                     return tiemposComida.map((tc) => {
                       if (day === sourceDia && tc === sourceTiempo) return null;
                       const key = `${day}-${tc}`;
                       return (
-                        <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-accent/50 cursor-pointer">
+                        <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-accent/50 cursor-pointer ml-2">
                           <Checkbox
                             checked={selected.has(key)}
                             onCheckedChange={() => toggle(key)}
