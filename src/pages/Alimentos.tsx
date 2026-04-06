@@ -260,18 +260,41 @@ export default function Alimentos() {
                   <TableCell className="text-right tabular-nums">{a.carbohidratos}</TableCell>
                   <TableCell className="text-right tabular-nums">{a.fibra}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => {
-                        setEditingItem(a);
-                        setEditNombre(a.nombre);
-                        setEditGrupo(a.grupo);
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
+                          setEditingItem(a);
+                          setEditNombre(a.nombre);
+                          setEditGrupo(a.grupo);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={async () => {
+                          const confirmed = window.confirm(`¿Eliminar "${a.nombre}"?`);
+                          if (!confirmed) return;
+                          const { error } = await supabase
+                            .from("alimentos_smae")
+                            .delete()
+                            .eq("id", a.id);
+                          if (error) {
+                            toast.error("Error al eliminar: " + error.message);
+                          } else {
+                            setAlimentos((prev) => prev.filter((x) => x.id !== a.id));
+                            toast.success("Alimento eliminado");
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
