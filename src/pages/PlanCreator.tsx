@@ -643,6 +643,7 @@ export default function PlanCreator() {
           porcion: item.porcion,
           nota_menu: item.nota_menu,
           incluir_detalle_pdf: item.incluir_detalle_pdf,
+          nombre_override: (item as any).nombre_override ?? null,
           orden: existingCount + idx,
         });
       });
