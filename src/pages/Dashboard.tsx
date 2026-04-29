@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [planes, setPlanes] = useState<PlanMenu[]>([]);
   const [plantillas, setPlantillas] = useState<PlanMenu[]>([]);
   const [loading, setLoading] = useState(true);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPlanes = async () => {
     const { data, error } = await supabase
