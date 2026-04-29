@@ -496,8 +496,8 @@ export default function Dashboard() {
       </div>
 
       {/* Templates Section */}
-      {plantillas.length > 0 && (
-        <div className="space-y-5">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
               <BookmarkCheck className="h-5 w-5 text-lavender-foreground" />
@@ -505,13 +505,42 @@ export default function Dashboard() {
             </h2>
             <p className="text-sm text-muted-foreground mt-1">Reutiliza estructuras de menú guardadas</p>
           </div>
+          <div>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={handleImportTemplate}
+            />
+            <Button
+              variant="outline"
+              className="gap-2 rounded-xl"
+              onClick={() => importInputRef.current?.click()}
+            >
+              <Upload className="h-4 w-4" />
+              Importar plantilla
+            </Button>
+          </div>
+        </div>
+        {plantillas.length === 0 ? (
+          <Card className="border-dashed rounded-2xl">
+            <CardContent className="flex flex-col items-center justify-center py-10">
+              <BookmarkCheck className="mb-3 h-10 w-10 text-muted-foreground/40" />
+              <p className="mb-1 text-sm font-medium">Sin plantillas todavía</p>
+              <p className="text-xs text-muted-foreground text-center max-w-sm">
+                Guarda un plan como plantilla desde el editor, o importa un archivo <code>.json</code> de plantilla.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {plantillas.map((t) => (
               <PlanCard key={t.id} plan={t} isTemplate />
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
