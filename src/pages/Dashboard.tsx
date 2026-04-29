@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { PlanMenu } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Trash2, Copy, Pencil, BookmarkCheck, FileSymlink } from "lucide-react";
+import { Plus, Calendar, Trash2, Copy, Pencil, BookmarkCheck, FileSymlink, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
