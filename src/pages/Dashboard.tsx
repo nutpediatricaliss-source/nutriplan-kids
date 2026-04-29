@@ -164,6 +164,23 @@ export default function Dashboard() {
       return;
     }
 
+    const allItems = items ?? [];
+
+    // Resolve display names so the importer can remap by name on another account
+    const alimentoIds = allItems.filter((i: any) => i.tipo === "alimento").map((i: any) => i.item_id);
+    const recetaIds = allItems.filter((i: any) => i.tipo === "receta").map((i: any) => i.item_id);
+
+    const [{ data: alimentos }, { data: recetas }] = await Promise.all([
+      alimentoIds.length
+        ? supabase.from("alimentos_smae").select("id,nombre").in("id", alimentoIds)
+        : Promise.resolve({ data: [] as any[] }),
+      recetaIds.length
+        ? supabase.from("recetas").select("id,nombre").in("id", recetaIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const aNames = new Map<string, string>((alimentos ?? []).map((a: any) => [a.id, a.nombre]));
+    const rNames = new Map<string, string>((recetas ?? []).map((r: any) => [r.id, r.nombre]));
+
     const payload = {
       version: 1,
       tipo: "plantilla_menu",
@@ -178,7 +195,15 @@ export default function Dashboard() {
         mensaje_agradecimiento: (plan as any).mensaje_agradecimiento,
         estilo_pdf: (plan as any).estilo_pdf,
       },
-      items: (items ?? []).map(({ id, created_at, plan_id, ...rest }) => rest),
+      items: allItems.map(({ id, created_at, plan_id, ...rest }: any) => {
+        // Embed original name as nombre_override fallback so importer can remap by name
+        let nombre_override = rest.nombre_override;
+        if (!nombre_override) {
+          if (rest.tipo === "alimento") nombre_override = aNames.get(rest.item_id) ?? null;
+          else if (rest.tipo === "receta") nombre_override = rNames.get(rest.item_id) ?? null;
+        }
+        return { ...rest, nombre_override };
+      }),
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
