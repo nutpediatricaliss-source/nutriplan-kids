@@ -153,6 +153,217 @@ export default function Dashboard() {
     fetchPlanes();
   };
 
+  const exportTemplate = async (plan: PlanMenu) => {
+    const { data: items, error } = await supabase
+      .from("plan_items")
+      .select("*")
+      .eq("plan_id", plan.id);
+
+    if (error) {
+      toast.error("Error al exportar plantilla");
+      return;
+    }
+
+    const payload = {
+      version: 1,
+      tipo: "plantilla_menu",
+      plantilla: {
+        nombre_paciente: plan.nombre_paciente,
+        dias: plan.dias,
+        tiempos_comida: plan.tiempos_comida,
+        pautas_extra: plan.pautas_extra,
+        generalidades: (plan as any).generalidades,
+        snacks_colaciones: (plan as any).snacks_colaciones,
+        recomendaciones: (plan as any).recomendaciones,
+        mensaje_agradecimiento: (plan as any).mensaje_agradecimiento,
+        estilo_pdf: (plan as any).estilo_pdf,
+      },
+      items: (items ?? []).map(({ id, created_at, plan_id, ...rest }) => rest),
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const safeName = plan.nombre_paciente
+      .replace(/\[Plantilla\]\s*/i, "")
+      .replace(/[^a-z0-9-_\s]/gi, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase() || "plantilla";
+    a.href = url;
+    a.download = `plantilla-${safeName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Plantilla exportada");
+  };
+
+  const handleImportTemplate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    let payload: any;
+    try {
+      payload = JSON.parse(await file.text());
+    } catch {
+      toast.error("Archivo JSON inválido");
+      if (importInputRef.current) importInputRef.current.value = "";
+      return;
+    }
+
+    if (payload?.tipo !== "plantilla_menu" || !payload?.plantilla) {
+      toast.error("El archivo no es una plantilla de menú válida");
+      if (importInputRef.current) importInputRef.current.value = "";
+      return;
+    }
+
+    const t = payload.plantilla;
+    const baseName: string = t.nombre_paciente || "Plantilla importada";
+    const finalName = /^\[Plantilla\]/i.test(baseName)
+      ? baseName
+      : `[Plantilla] ${baseName.replace(/^\[Importada\]\s*/i, "")}`;
+
+    const { data: newTemplate, error: insertErr } = await supabase
+      .from("planes_menu")
+      .insert({
+        user_id: user.id,
+        nombre_paciente: finalName,
+        dias: t.dias ?? 14,
+        tiempos_comida: t.tiempos_comida ?? ["Desayuno", "Comida", "Cena"],
+        pautas_extra: t.pautas_extra ?? "",
+        generalidades: t.generalidades ?? null,
+        snacks_colaciones: t.snacks_colaciones ?? null,
+        recomendaciones: t.recomendaciones ?? null,
+        mensaje_agradecimiento: t.mensaje_agradecimiento ?? null,
+        estilo_pdf: t.estilo_pdf ?? "lista",
+        es_plantilla: true,
+      } as any)
+      .select()
+      .single();
+
+    if (insertErr || !newTemplate) {
+      toast.error("Error al crear la plantilla");
+      if (importInputRef.current) importInputRef.current.value = "";
+      return;
+    }
+
+    const rawItems: any[] = Array.isArray(payload.items) ? payload.items : [];
+
+    if (rawItems.length > 0) {
+      // Build a name -> id map for alimentos and recetas of this user (or shared alimentos)
+      const [{ data: alimentos }, { data: recetas }] = await Promise.all([
+        supabase.from("alimentos_smae").select("id,nombre"),
+        supabase.from("recetas").select("id,nombre").eq("user_id", user.id),
+      ]);
+      const aMap = new Map<string, string>();
+      (alimentos ?? []).forEach((a: any) => aMap.set(a.nombre.trim().toLowerCase(), a.id));
+      const rMap = new Map<string, string>();
+      (recetas ?? []).forEach((r: any) => rMap.set(r.nombre.trim().toLowerCase(), r.id));
+
+      let convertidos = 0;
+      const itemsToInsert = rawItems.map((it) => {
+        const tipo = it.tipo;
+        let item_id = it.item_id;
+        let nuevoTipo = tipo;
+        let nombre_override = it.nombre_override ?? null;
+
+        if (tipo === "alimento") {
+          const found = nombre_override
+            ? aMap.get(String(nombre_override).trim().toLowerCase())
+            : undefined;
+          if (!found) {
+            // Si no se encuentra, convertir a personalizado para no romper FK lógica
+            nuevoTipo = "personalizado";
+            item_id = crypto.randomUUID();
+            nombre_override = nombre_override || "Alimento";
+            convertidos++;
+          } else {
+            item_id = found;
+          }
+        } else if (tipo === "receta") {
+          const found = nombre_override
+            ? rMap.get(String(nombre_override).trim().toLowerCase())
+            : undefined;
+          if (!found) {
+            nuevoTipo = "personalizado";
+            item_id = crypto.randomUUID();
+            nombre_override = nombre_override || "Receta";
+            convertidos++;
+          } else {
+            item_id = found;
+          }
+        } else if (tipo === "personalizado") {
+          item_id = crypto.randomUUID();
+        }
+
+        return {
+          plan_id: newTemplate.id,
+          dia: it.dia ?? 1,
+          tiempo_comida: it.tiempo_comida ?? "Desayuno",
+          tipo: nuevoTipo,
+          item_id,
+          porcion: it.porcion ?? "",
+          nota_menu: it.nota_menu ?? "",
+          nombre_override,
+          orden: it.orden ?? 0,
+          incluir_detalle_pdf: it.incluir_detalle_pdf ?? true,
+        };
+      });
+
+      // For alimento items we need a name-based lookup; but original items only stored item_id (not name).
+      // Re-map: if original item_id exists in current alimentos table by id, keep it.
+      const ids = itemsToInsert
+        .filter((i) => i.tipo === "alimento" || i.tipo === "receta")
+        .map((i) => i.item_id);
+      if (ids.length > 0) {
+        const [{ data: aById }, { data: rById }] = await Promise.all([
+          supabase.from("alimentos_smae").select("id").in("id", ids),
+          supabase.from("recetas").select("id").in("id", ids),
+        ]);
+        const validA = new Set((aById ?? []).map((x: any) => x.id));
+        const validR = new Set((rById ?? []).map((x: any) => x.id));
+        for (const it of itemsToInsert) {
+          if (it.tipo === "alimento" && !validA.has(it.item_id)) {
+            it.tipo = "personalizado";
+            it.nombre_override = it.nombre_override || "Alimento";
+            it.item_id = crypto.randomUUID();
+            convertidos++;
+          } else if (it.tipo === "receta" && !validR.has(it.item_id)) {
+            it.tipo = "personalizado";
+            it.nombre_override = it.nombre_override || "Receta";
+            it.item_id = crypto.randomUUID();
+            convertidos++;
+          }
+        }
+      }
+
+      const { error: itemsErr } = await supabase
+        .from("plan_items")
+        .insert(itemsToInsert);
+
+      if (itemsErr) {
+        await supabase.from("planes_menu").delete().eq("id", newTemplate.id);
+        toast.error("Error al importar items: " + itemsErr.message);
+        if (importInputRef.current) importInputRef.current.value = "";
+        return;
+      }
+
+      toast.success(
+        convertidos > 0
+          ? `Plantilla importada (${itemsToInsert.length} items, ${convertidos} convertidos a personalizado)`
+          : `Plantilla importada (${itemsToInsert.length} items)`
+      );
+    } else {
+      toast.success("Plantilla importada (sin items)");
+    }
+
+    if (importInputRef.current) importInputRef.current.value = "";
+    fetchPlanes();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
