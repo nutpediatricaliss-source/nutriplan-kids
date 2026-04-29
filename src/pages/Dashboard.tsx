@@ -429,6 +429,11 @@ export default function Dashboard() {
             <Copy className="h-3.5 w-3.5" />
           </Button>
         )}
+        {isTemplate && (
+          <Button variant="outline" size="sm" onClick={() => exportTemplate(plan)} title="Exportar plantilla">
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="outline" size="sm" title="Eliminar">
