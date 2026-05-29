@@ -8,6 +8,7 @@ const navItems = [
   { to: "/", label: "Dashboard" },
   { to: "/recetas", label: "Recetas" },
   { to: "/alimentos", label: "Alimentos" },
+  { to: "/calculadora", label: "Calculadora" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
