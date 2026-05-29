@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,37 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Flame, Activity } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { Calculator, Flame, Activity, Search, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+
+// Mapeo de equivalentes a grupos en alimentos_smae
+const grupoSmaeMap: Record<string, string[]> = {
+  "Verduras": ["Verduras"],
+  "Frutas": ["Frutas"],
+  "Cereales sin grasa": ["Cereal"],
+  "Leguminosas": ["Leguminosas"],
+  "AOA muy bajo en grasa": ["Alimentos de Origen Animal"],
+  "AOA bajo en grasa": ["Alimentos de Origen Animal"],
+  "Leche semidescremada": ["Leche"],
+  "Grasas sin proteína": ["Grasas", "grasas"],
+  "Azúcares sin grasa": ["Azúcares"],
+};
+
+// Escala "1.5 pieza" × 3 → "4.5 pieza"
+function escalarPorcion(porcion: string | null, factor: number): string {
+  if (!porcion) return `${factor}`;
+  const m = porcion.trim().match(/^([\d.,]+)\s*(.*)$/);
+  if (!m) return `${factor} × ${porcion}`;
+  const num = parseFloat(m[1].replace(",", "."));
+  if (isNaN(num)) return `${factor} × ${porcion}`;
+  const escalado = Math.round(num * factor * 100) / 100;
+  return `${escalado}${m[2] ? " " + m[2] : ""}`;
+}
+
 
 type Sexo = "M" | "F";
 
