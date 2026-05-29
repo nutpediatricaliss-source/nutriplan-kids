@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,37 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, Flame, Activity } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { Calculator, Flame, Activity, Search, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+
+// Mapeo de equivalentes a grupos en alimentos_smae
+const grupoSmaeMap: Record<string, string[]> = {
+  "Verduras": ["Verduras"],
+  "Frutas": ["Frutas"],
+  "Cereales sin grasa": ["Cereal"],
+  "Leguminosas": ["Leguminosas"],
+  "AOA muy bajo en grasa": ["Alimentos de Origen Animal"],
+  "AOA bajo en grasa": ["Alimentos de Origen Animal"],
+  "Leche semidescremada": ["Leche"],
+  "Grasas sin proteína": ["Grasas", "grasas"],
+  "Azúcares sin grasa": ["Azúcares"],
+};
+
+// Escala "1.5 pieza" × 3 → "4.5 pieza"
+function escalarPorcion(porcion: string | null, factor: number): string {
+  if (!porcion) return `${factor}`;
+  const m = porcion.trim().match(/^([\d.,]+)\s*(.*)$/);
+  if (!m) return `${factor} × ${porcion}`;
+  const num = parseFloat(m[1].replace(",", "."));
+  if (isNaN(num)) return `${factor} × ${porcion}`;
+  const escalado = Math.round(num * factor * 100) / 100;
+  return `${escalado}${m[2] ? " " + m[2] : ""}`;
+}
+
 
 type Sexo = "M" | "F";
 
@@ -95,6 +125,29 @@ export default function Calculadora() {
   const [pctHco, setPctHco] = useState<number>(55);
   const [pctProt, setPctProt] = useState<number>(15);
   const pctGra = Math.max(0, 100 - pctHco - pctProt);
+
+  // Alimentos del catálogo SMAE para búsqueda por grupo
+  const [alimentos, setAlimentos] = useState<Array<{ id: string; nombre: string; grupo: string; porcion: string | null }>>([]);
+  useEffect(() => {
+    (async () => {
+      const all: any[] = [];
+      let from = 0;
+      const size = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("alimentos_smae")
+          .select("id,nombre,grupo,porcion")
+          .order("nombre")
+          .range(from, from + size - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < size) break;
+        from += size;
+      }
+      setAlimentos(all);
+    })();
+  }, []);
+
 
   const tmb = useMemo(() => {
     if (!peso || !edad) return 0;
@@ -329,56 +382,137 @@ export default function Calculadora() {
             Estimación basada en SMAE para cubrir el requerimiento calculado.
           </p>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-2 pr-3 font-medium">Grupo</th>
-                  <th className="py-2 px-3 text-center font-medium">Porciones</th>
-                  <th className="py-2 px-3 text-right font-medium">kcal</th>
-                  <th className="py-2 px-3 text-right font-medium">HCO (g)</th>
-                  <th className="py-2 px-3 text-right font-medium">Prot (g)</th>
-                  <th className="py-2 pl-3 text-right font-medium">Gra (g)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {intercambios.map((e: any) => (
-                  <tr key={e.nombre} className="border-b last:border-0">
-                    <td className="py-2 pr-3">{e.nombre}</td>
-                    <td className="py-2 px-3 text-center">
-                      <Badge variant="secondary" className="rounded-full">{e.porciones}</Badge>
-                    </td>
-                    <td className="py-2 px-3 text-right tabular-nums">{e.kcal * e.porciones}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{e.hco * e.porciones}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{e.prot * e.porciones}</td>
-                    <td className="py-2 pl-3 text-right tabular-nums">{e.gra * e.porciones}</td>
-                  </tr>
-                ))}
-                <tr className="font-semibold">
-                  <td className="py-3 pr-3">Total estimado</td>
-                  <td />
-                  <td className="py-3 px-3 text-right tabular-nums">{totalDesdeInt.kcal}</td>
-                  <td className="py-3 px-3 text-right tabular-nums">{totalDesdeInt.hco}</td>
-                  <td className="py-3 px-3 text-right tabular-nums">{totalDesdeInt.prot}</td>
-                  <td className="py-3 pl-3 text-right tabular-nums">{totalDesdeInt.gra}</td>
-                </tr>
-                <tr className="text-muted-foreground">
-                  <td className="py-1 pr-3 text-xs">Objetivo</td>
-                  <td />
-                  <td className="py-1 px-3 text-right text-xs tabular-nums">{get}</td>
-                  <td className="py-1 px-3 text-right text-xs tabular-nums">{macros.hco.g}</td>
-                  <td className="py-1 px-3 text-right text-xs tabular-nums">{macros.prot.g}</td>
-                  <td className="py-1 pl-3 text-right text-xs tabular-nums">{macros.gra.g}</td>
-                </tr>
-              </tbody>
-            </table>
+        <CardContent className="space-y-3">
+          {intercambios.map((e: any) => (
+            <GrupoIntercambioCard
+              key={e.nombre}
+              equiv={e}
+              alimentos={alimentos.filter((a) =>
+                (grupoSmaeMap[e.nombre] ?? []).includes(a.grupo)
+              )}
+            />
+          ))}
+
+          <div className="mt-2 grid grid-cols-2 gap-3 rounded-xl bg-muted/50 p-4 sm:grid-cols-5">
+            <div>
+              <p className="text-xs text-muted-foreground">Total estimado</p>
+              <p className="text-sm font-semibold">{totalDesdeInt.kcal} kcal</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">HCO</p>
+              <p className="text-sm font-semibold">{totalDesdeInt.hco} g</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Proteína</p>
+              <p className="text-sm font-semibold">{totalDesdeInt.prot} g</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Grasa</p>
+              <p className="text-sm font-semibold">{totalDesdeInt.gra} g</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Objetivo</p>
+              <p className="text-sm font-semibold">{get} kcal</p>
+            </div>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+function GrupoIntercambioCard({
+  equiv,
+  alimentos,
+}: {
+  equiv: { nombre: string; porciones: number; kcal: number; hco: number; prot: number; gra: number };
+  alimentos: Array<{ id: string; nombre: string; grupo: string; porcion: string | null }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<{ nombre: string; porcion: string | null } | null>(null);
+
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="rounded-full text-base px-3 py-1 tabular-nums">
+            {equiv.porciones}
+          </Badge>
+          <div>
+            <p className="font-semibold">{equiv.nombre}</p>
+            <p className="text-xs text-muted-foreground">
+              {equiv.kcal * equiv.porciones} kcal · HCO {equiv.hco * equiv.porciones}g · Prot {equiv.prot * equiv.porciones}g · Gra {equiv.gra * equiv.porciones}g
+            </p>
+          </div>
+        </div>
+
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="rounded-full">
+              <Search className="mr-2 h-3.5 w-3.5" />
+              {selected ? "Cambiar alimento" : "Buscar alimento"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[320px] p-0" align="end">
+            <Command>
+              <CommandInput placeholder={`Buscar en ${equiv.nombre}...`} />
+              <CommandList>
+                <CommandEmpty>
+                  {alimentos.length === 0 ? "Cargando catálogo..." : "Sin resultados"}
+                </CommandEmpty>
+                <CommandGroup>
+                  {alimentos.slice(0, 200).map((a) => (
+                    <CommandItem
+                      key={a.id}
+                      value={a.nombre}
+                      onSelect={() => {
+                        setSelected({ nombre: a.nombre, porcion: a.porcion });
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selected?.nombre === a.nombre ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex flex-1 items-center justify-between gap-2">
+                        <span className="truncate">{a.nombre}</span>
+                        {a.porcion && (
+                          <span className="shrink-0 text-xs text-muted-foreground">{a.porcion}</span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {selected && (
+        <div className="mt-3 grid gap-2 rounded-lg bg-muted/50 p-3 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Alimento</p>
+            <p className="text-sm font-medium">{selected.nombre}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Porción base (1 equiv.)</p>
+            <p className="text-sm font-medium">{selected.porcion ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Para {equiv.porciones} porciones</p>
+            <p className="text-sm font-semibold text-primary">
+              {escalarPorcion(selected.porcion, equiv.porciones)}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function MacroSlider({
   label,
