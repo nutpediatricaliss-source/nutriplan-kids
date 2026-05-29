@@ -126,6 +126,29 @@ export default function Calculadora() {
   const [pctProt, setPctProt] = useState<number>(15);
   const pctGra = Math.max(0, 100 - pctHco - pctProt);
 
+  // Alimentos del catálogo SMAE para búsqueda por grupo
+  const [alimentos, setAlimentos] = useState<Array<{ id: string; nombre: string; grupo: string; porcion: string | null }>>([]);
+  useEffect(() => {
+    (async () => {
+      const all: any[] = [];
+      let from = 0;
+      const size = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("alimentos_smae")
+          .select("id,nombre,grupo,porcion")
+          .order("nombre")
+          .range(from, from + size - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < size) break;
+        from += size;
+      }
+      setAlimentos(all);
+    })();
+  }, []);
+
+
   const tmb = useMemo(() => {
     if (!peso || !edad) return 0;
     if (formula === "schofield-wh") return schofieldWH(sexo, edad, peso, talla || 0);
