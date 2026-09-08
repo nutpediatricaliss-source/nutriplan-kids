@@ -103,22 +103,15 @@ export default function Calculadora() {
   }, []);
 
 
-  const tmb = useMemo(() => {
-    if (!peso || !edad) return 0;
-    if (formula === "schofield-wh") return schofieldWH(sexo, edad, peso, talla || 0);
-    if (formula === "schofield-w") return schofieldW(sexo, edad, peso);
-    return faoOms(sexo, edad, peso);
-  }, [formula, sexo, edad, peso, talla]);
+  const tmb = useMemo(
+    () => calcTMB(formula, sexo, edad, peso, talla),
+    [formula, sexo, edad, peso, talla]
+  );
 
   const get = Math.round(tmb * parseFloat(factor || "1"));
 
   const macros = useMemo(() => {
-    const calc = (pct: number, kcalPorG: number) => {
-      const kcal = (get * pct) / 100;
-      const g = kcal / kcalPorG;
-      const gxkg = peso ? g / peso : 0;
-      return { kcal: Math.round(kcal), g: Math.round(g * 10) / 10, gxkg: Math.round(gxkg * 100) / 100 };
-    };
+    const calc = (pct: number, kcalPorG: number) => calcMacros(get, pct, kcalPorG, peso);
     return {
       hco: calc(pctHco, 4),
       prot: calc(pctProt, 4),
