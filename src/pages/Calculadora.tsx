@@ -18,6 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Calculator, Flame, Activity, Search, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import MacroSlider from "@/components/MacroSlider";
+import {
+  actividades,
+  calcTMB,
+  calcMacros,
+  type FormulaREE,
+  type Sexo,
+} from "@/lib/nutritionCalc";
 
 // Mapeo de equivalentes a grupos en alimentos_smae
 const grupoSmaeMap: Record<string, string[]> = {
