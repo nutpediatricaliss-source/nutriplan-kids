@@ -59,6 +59,98 @@ export type Database = {
         }
         Relationships: []
       }
+      consultas: {
+        Row: {
+          created_at: string
+          factor_actividad: number | null
+          fecha: string
+          formula_ree: string | null
+          id: string
+          macros_porcentaje: Json | null
+          motivo_consulta: string | null
+          notas: string | null
+          paciente_id: string
+          perimetro_cefalico: number | null
+          peso: number | null
+          ree_kcal: number | null
+          talla: number | null
+        }
+        Insert: {
+          created_at?: string
+          factor_actividad?: number | null
+          fecha?: string
+          formula_ree?: string | null
+          id?: string
+          macros_porcentaje?: Json | null
+          motivo_consulta?: string | null
+          notas?: string | null
+          paciente_id: string
+          perimetro_cefalico?: number | null
+          peso?: number | null
+          ree_kcal?: number | null
+          talla?: number | null
+        }
+        Update: {
+          created_at?: string
+          factor_actividad?: number | null
+          fecha?: string
+          formula_ree?: string | null
+          id?: string
+          macros_porcentaje?: Json | null
+          motivo_consulta?: string | null
+          notas?: string | null
+          paciente_id?: string
+          perimetro_cefalico?: number | null
+          peso?: number | null
+          ree_kcal?: number | null
+          talla?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pacientes: {
+        Row: {
+          created_at: string
+          diagnostico: string | null
+          fecha_nacimiento: string
+          id: string
+          nombre: string
+          notas_generales: string | null
+          sexo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          diagnostico?: string | null
+          fecha_nacimiento: string
+          id?: string
+          nombre: string
+          notas_generales?: string | null
+          sexo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          diagnostico?: string | null
+          fecha_nacimiento?: string
+          id?: string
+          nombre?: string
+          notas_generales?: string | null
+          sexo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_items: {
         Row: {
           created_at: string
@@ -122,6 +214,7 @@ export type Database = {
           id: string
           mensaje_agradecimiento: string | null
           nombre_paciente: string
+          paciente_id: string | null
           pautas_extra: string | null
           recomendaciones: string | null
           snacks_colaciones: string | null
@@ -138,6 +231,7 @@ export type Database = {
           id?: string
           mensaje_agradecimiento?: string | null
           nombre_paciente: string
+          paciente_id?: string | null
           pautas_extra?: string | null
           recomendaciones?: string | null
           snacks_colaciones?: string | null
@@ -154,6 +248,7 @@ export type Database = {
           id?: string
           mensaje_agradecimiento?: string | null
           nombre_paciente?: string
+          paciente_id?: string | null
           pautas_extra?: string | null
           recomendaciones?: string | null
           snacks_colaciones?: string | null
@@ -161,7 +256,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "planes_menu_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plantillas_texto: {
         Row: {
