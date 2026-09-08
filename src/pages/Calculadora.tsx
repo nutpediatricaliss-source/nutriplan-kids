@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -18,6 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Calculator, Flame, Activity, Search, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import MacroSlider from "@/components/MacroSlider";
+import {
+  actividades,
+  calcTMB,
+  calcMacros,
+  type FormulaREE,
+  type Sexo,
+} from "@/lib/nutritionCalc";
 
 // Mapeo de equivalentes a grupos en alimentos_smae
 const grupoSmaeMap: Record<string, string[]> = {
@@ -44,59 +51,7 @@ function escalarPorcion(porcion: string | null, factor: number): string {
 }
 
 
-type Sexo = "M" | "F";
 
-// ---- Fórmulas (kcal/día, gasto energético basal) ----
-function schofieldWH(sexo: Sexo, edad: number, peso: number, talla: number) {
-  // talla en cm
-  if (sexo === "M") {
-    if (edad < 3) return 0.167 * peso + 15.174 * (talla / 100) - 617.6;
-    if (edad < 10) return 19.59 * peso + 1.303 * talla + 414.9;
-    if (edad < 18) return 16.25 * peso + 1.372 * talla + 515.5;
-    return 15.057 * peso + 1.004 * talla + 705.8;
-  } else {
-    if (edad < 3) return 16.252 * peso + 10.232 * (talla / 100) - 413.5;
-    if (edad < 10) return 16.969 * peso + 1.618 * talla + 371.2;
-    if (edad < 18) return 8.365 * peso + 4.65 * talla + 200;
-    return 13.623 * peso + 23.8 * (talla / 100) + 98.2;
-  }
-}
-
-function schofieldW(sexo: Sexo, edad: number, peso: number) {
-  if (sexo === "M") {
-    if (edad < 3) return 59.512 * peso - 30.4;
-    if (edad < 10) return 22.706 * peso + 504.3;
-    if (edad < 18) return 17.686 * peso + 658.2;
-    return 15.057 * peso + 692.2;
-  } else {
-    if (edad < 3) return 58.317 * peso - 31.1;
-    if (edad < 10) return 20.315 * peso + 485.9;
-    if (edad < 18) return 13.384 * peso + 692.6;
-    return 14.818 * peso + 486.6;
-  }
-}
-
-function faoOms(sexo: Sexo, edad: number, peso: number) {
-  if (sexo === "M") {
-    if (edad < 3) return 60.9 * peso - 54;
-    if (edad < 10) return 22.7 * peso + 495;
-    if (edad < 18) return 17.5 * peso + 651;
-    return 15.3 * peso + 679;
-  } else {
-    if (edad < 3) return 61.0 * peso - 51;
-    if (edad < 10) return 22.5 * peso + 499;
-    if (edad < 18) return 12.2 * peso + 746;
-    return 14.7 * peso + 496;
-  }
-}
-
-const actividades = [
-  { value: "1.2", label: "Reposo / sedentario (1.2)" },
-  { value: "1.3", label: "Muy ligera (1.3)" },
-  { value: "1.55", label: "Ligera (1.55)" },
-  { value: "1.75", label: "Moderada (1.75)" },
-  { value: "2.0", label: "Intensa (2.0)" },
-];
 
 // ---- Equivalentes SMAE (aprox por porción) ----
 const equivalentes = [
@@ -117,9 +72,7 @@ export default function Calculadora() {
   const [peso, setPeso] = useState<number>(20);
   const [talla, setTalla] = useState<number>(115);
   const [factor, setFactor] = useState<string>("1.55");
-  const [formula, setFormula] = useState<"schofield-wh" | "schofield-w" | "fao">(
-    "schofield-wh"
-  );
+  const [formula, setFormula] = useState<FormulaREE>("schofield-wh");
 
   // Sliders: carbohidratos y proteínas controlables, grasas = 100 - hco - prot
   const [pctHco, setPctHco] = useState<number>(55);
@@ -149,22 +102,15 @@ export default function Calculadora() {
   }, []);
 
 
-  const tmb = useMemo(() => {
-    if (!peso || !edad) return 0;
-    if (formula === "schofield-wh") return schofieldWH(sexo, edad, peso, talla || 0);
-    if (formula === "schofield-w") return schofieldW(sexo, edad, peso);
-    return faoOms(sexo, edad, peso);
-  }, [formula, sexo, edad, peso, talla]);
+  const tmb = useMemo(
+    () => calcTMB(formula, sexo, edad, peso, talla),
+    [formula, sexo, edad, peso, talla]
+  );
 
   const get = Math.round(tmb * parseFloat(factor || "1"));
 
   const macros = useMemo(() => {
-    const calc = (pct: number, kcalPorG: number) => {
-      const kcal = (get * pct) / 100;
-      const g = kcal / kcalPorG;
-      const gxkg = peso ? g / peso : 0;
-      return { kcal: Math.round(kcal), g: Math.round(g * 10) / 10, gxkg: Math.round(gxkg * 100) / 100 };
-    };
+    const calc = (pct: number, kcalPorG: number) => calcMacros(get, pct, kcalPorG, peso);
     return {
       hco: calc(pctHco, 4),
       prot: calc(pctProt, 4),
@@ -509,61 +455,6 @@ function GrupoIntercambioCard({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-
-function MacroSlider({
-  label,
-  color,
-  pct,
-  onChange,
-  kcal,
-  g,
-  gxkg,
-  disabled,
-}: {
-  label: string;
-  color: string;
-  pct: number;
-  onChange?: (v: number) => void;
-  kcal: number;
-  g: number;
-  gxkg: number;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={`h-3 w-3 rounded-full ${color}`} />
-          <Label className="text-sm">{label}</Label>
-        </div>
-        <span className="text-sm font-semibold tabular-nums">{pct}%</span>
-      </div>
-      <Slider
-        value={[pct]}
-        min={0}
-        max={100}
-        step={1}
-        disabled={disabled}
-        onValueChange={(v) => onChange?.(v[0])}
-      />
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
-          <p className="text-muted-foreground">kcal</p>
-          <p className="font-semibold tabular-nums">{kcal}</p>
-        </div>
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
-          <p className="text-muted-foreground">gramos</p>
-          <p className="font-semibold tabular-nums">{g}</p>
-        </div>
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
-          <p className="text-muted-foreground">g/kg/día</p>
-          <p className="font-semibold tabular-nums">{gxkg}</p>
-        </div>
-      </div>
     </div>
   );
 }

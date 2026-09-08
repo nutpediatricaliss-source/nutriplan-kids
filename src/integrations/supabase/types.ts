@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -56,6 +56,98 @@ export type Database = {
           proteinas?: number | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      consultas: {
+        Row: {
+          created_at: string
+          factor_actividad: number | null
+          fecha: string
+          formula_ree: string | null
+          id: string
+          macros_porcentaje: Json | null
+          motivo_consulta: string | null
+          notas: string | null
+          paciente_id: string
+          perimetro_cefalico: number | null
+          peso: number | null
+          ree_kcal: number | null
+          talla: number | null
+        }
+        Insert: {
+          created_at?: string
+          factor_actividad?: number | null
+          fecha?: string
+          formula_ree?: string | null
+          id?: string
+          macros_porcentaje?: Json | null
+          motivo_consulta?: string | null
+          notas?: string | null
+          paciente_id: string
+          perimetro_cefalico?: number | null
+          peso?: number | null
+          ree_kcal?: number | null
+          talla?: number | null
+        }
+        Update: {
+          created_at?: string
+          factor_actividad?: number | null
+          fecha?: string
+          formula_ree?: string | null
+          id?: string
+          macros_porcentaje?: Json | null
+          motivo_consulta?: string | null
+          notas?: string | null
+          paciente_id?: string
+          perimetro_cefalico?: number | null
+          peso?: number | null
+          ree_kcal?: number | null
+          talla?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pacientes: {
+        Row: {
+          created_at: string
+          diagnostico: string | null
+          fecha_nacimiento: string
+          id: string
+          nombre: string
+          notas_generales: string | null
+          sexo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          diagnostico?: string | null
+          fecha_nacimiento: string
+          id?: string
+          nombre: string
+          notas_generales?: string | null
+          sexo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          diagnostico?: string | null
+          fecha_nacimiento?: string
+          id?: string
+          nombre?: string
+          notas_generales?: string | null
+          sexo?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -122,6 +214,7 @@ export type Database = {
           id: string
           mensaje_agradecimiento: string | null
           nombre_paciente: string
+          paciente_id: string | null
           pautas_extra: string | null
           recomendaciones: string | null
           snacks_colaciones: string | null
@@ -138,6 +231,7 @@ export type Database = {
           id?: string
           mensaje_agradecimiento?: string | null
           nombre_paciente: string
+          paciente_id?: string | null
           pautas_extra?: string | null
           recomendaciones?: string | null
           snacks_colaciones?: string | null
@@ -154,6 +248,7 @@ export type Database = {
           id?: string
           mensaje_agradecimiento?: string | null
           nombre_paciente?: string
+          paciente_id?: string | null
           pautas_extra?: string | null
           recomendaciones?: string | null
           snacks_colaciones?: string | null
@@ -161,7 +256,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "planes_menu_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plantillas_texto: {
         Row: {
@@ -259,12 +362,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -288,11 +391,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -313,11 +416,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -338,11 +441,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -355,11 +458,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
