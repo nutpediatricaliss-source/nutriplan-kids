@@ -44,59 +44,7 @@ function escalarPorcion(porcion: string | null, factor: number): string {
 }
 
 
-type Sexo = "M" | "F";
 
-// ---- Fórmulas (kcal/día, gasto energético basal) ----
-function schofieldWH(sexo: Sexo, edad: number, peso: number, talla: number) {
-  // talla en cm
-  if (sexo === "M") {
-    if (edad < 3) return 0.167 * peso + 15.174 * (talla / 100) - 617.6;
-    if (edad < 10) return 19.59 * peso + 1.303 * talla + 414.9;
-    if (edad < 18) return 16.25 * peso + 1.372 * talla + 515.5;
-    return 15.057 * peso + 1.004 * talla + 705.8;
-  } else {
-    if (edad < 3) return 16.252 * peso + 10.232 * (talla / 100) - 413.5;
-    if (edad < 10) return 16.969 * peso + 1.618 * talla + 371.2;
-    if (edad < 18) return 8.365 * peso + 4.65 * talla + 200;
-    return 13.623 * peso + 23.8 * (talla / 100) + 98.2;
-  }
-}
-
-function schofieldW(sexo: Sexo, edad: number, peso: number) {
-  if (sexo === "M") {
-    if (edad < 3) return 59.512 * peso - 30.4;
-    if (edad < 10) return 22.706 * peso + 504.3;
-    if (edad < 18) return 17.686 * peso + 658.2;
-    return 15.057 * peso + 692.2;
-  } else {
-    if (edad < 3) return 58.317 * peso - 31.1;
-    if (edad < 10) return 20.315 * peso + 485.9;
-    if (edad < 18) return 13.384 * peso + 692.6;
-    return 14.818 * peso + 486.6;
-  }
-}
-
-function faoOms(sexo: Sexo, edad: number, peso: number) {
-  if (sexo === "M") {
-    if (edad < 3) return 60.9 * peso - 54;
-    if (edad < 10) return 22.7 * peso + 495;
-    if (edad < 18) return 17.5 * peso + 651;
-    return 15.3 * peso + 679;
-  } else {
-    if (edad < 3) return 61.0 * peso - 51;
-    if (edad < 10) return 22.5 * peso + 499;
-    if (edad < 18) return 12.2 * peso + 746;
-    return 14.7 * peso + 496;
-  }
-}
-
-const actividades = [
-  { value: "1.2", label: "Reposo / sedentario (1.2)" },
-  { value: "1.3", label: "Muy ligera (1.3)" },
-  { value: "1.55", label: "Ligera (1.55)" },
-  { value: "1.75", label: "Moderada (1.75)" },
-  { value: "2.0", label: "Intensa (2.0)" },
-];
 
 // ---- Equivalentes SMAE (aprox por porción) ----
 const equivalentes = [
