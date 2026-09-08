@@ -73,9 +73,7 @@ export default function Calculadora() {
   const [peso, setPeso] = useState<number>(20);
   const [talla, setTalla] = useState<number>(115);
   const [factor, setFactor] = useState<string>("1.55");
-  const [formula, setFormula] = useState<"schofield-wh" | "schofield-w" | "fao">(
-    "schofield-wh"
-  );
+  const [formula, setFormula] = useState<FormulaREE>("schofield-wh");
 
   // Sliders: carbohidratos y proteínas controlables, grasas = 100 - hco - prot
   const [pctHco, setPctHco] = useState<number>(55);
