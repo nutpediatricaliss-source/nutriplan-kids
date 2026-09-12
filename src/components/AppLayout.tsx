@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react";
 const navItems = [
   { to: "/", label: "Dashboard" },
   { to: "/recetas", label: "Recetas" },
+  { to: "/pacientes", label: "Pacientes" },
   { to: "/alimentos", label: "Alimentos" },
   { to: "/calculadora", label: "Calculadora" },
 ];

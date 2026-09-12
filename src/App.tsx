@@ -11,6 +11,8 @@ import Recetas from "@/pages/Recetas";
 import Alimentos from "@/pages/Alimentos";
 import PlanCreator from "@/pages/PlanCreator";
 import Calculadora from "@/pages/Calculadora";
+import Pacientes from "@/pages/Pacientes";
+import PacienteDetalle from "@/pages/PacienteDetalle";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ function ProtectedRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/recetas" element={<Recetas />} />
+        <Route path="/pacientes" element={<Pacientes />} />
+        <Route path="/pacientes/:id" element={<PacienteDetalle />} />
         <Route path="/alimentos" element={<Alimentos />} />
         <Route path="/plan/:id" element={<PlanCreator />} />
         <Route path="/calculadora" element={<Calculadora />} />
