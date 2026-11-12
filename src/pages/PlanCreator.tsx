@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { PlanMenu, PlanItem, Alimento, Receta } from "@/lib/types";
@@ -270,6 +270,8 @@ function CopyMealPopover({
 // ─── Main component ────────────────────────────────────────────────────────
 export default function PlanCreator() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const pacienteIdParam = searchParams.get("paciente_id");
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -328,12 +330,32 @@ export default function PlanCreator() {
       return;
     }
 
-    setPlan(planRes.data);
+    let planData: any = planRes.data;
+    // Precargar nombre del paciente si llega paciente_id (URL o ya vinculado)
+    const pacienteId = pacienteIdParam || planData.paciente_id;
+    if (pacienteId) {
+      const { data: pac } = await supabase
+        .from("pacientes")
+        .select("id, nombre")
+        .eq("id", pacienteId)
+        .maybeSingle();
+      if (pac) {
+        const needsName = !planData.nombre_paciente?.trim() || planData.paciente_id !== pac.id;
+        if (needsName || planData.paciente_id !== pac.id) {
+          const updates: any = { paciente_id: pac.id };
+          if (needsName) updates.nombre_paciente = pac.nombre;
+          await supabase.from("planes_menu").update(updates).eq("id", id);
+          planData = { ...planData, ...updates };
+        }
+      }
+    }
+
+    setPlan(planData);
     setItems(itemsRes.data ?? []);
     setAlimentos(allAlimentos);
     setRecetas(recetasRes.data ?? []);
     setLoading(false);
-  }, [id, navigate]);
+  }, [id, navigate, pacienteIdParam]);
 
   useEffect(() => {
     fetchAll();

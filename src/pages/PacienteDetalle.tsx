@@ -23,6 +23,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Plus,
   Flame,
@@ -93,6 +103,41 @@ export default function PacienteDetalle() {
   const [pctHco, setPctHco] = useState(55);
   const [pctProt, setPctProt] = useState(15);
   const pctGra = Math.max(0, 100 - pctHco - pctProt);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<Consulta | null>(null);
+
+  const abrirNueva = () => {
+    setEditingId(null);
+    setFecha(hoyISO());
+    setPeso("");
+    setTalla("");
+    setPc("");
+    setMotivo("");
+    setNotas("");
+    setFormula("schofield-wh");
+    setFactor("1.55");
+    setPctHco(55);
+    setPctProt(15);
+    setOpen(true);
+  };
+
+  const abrirEditar = (c: Consulta) => {
+    setEditingId(c.id);
+    setFecha(c.fecha);
+    setPeso(c.peso != null ? String(c.peso) : "");
+    setTalla(c.talla != null ? String(c.talla) : "");
+    setPc(c.perimetro_cefalico != null ? String(c.perimetro_cefalico) : "");
+    setMotivo(c.motivo_consulta ?? "");
+    setNotas(c.notas ?? "");
+    setFormula(((c.formula_ree as FormulaREE) || "schofield-wh"));
+    const f = c.factor_actividad != null ? String(c.factor_actividad) : "1.55";
+    const match = actividades.find((a) => parseFloat(a.value) === parseFloat(f));
+    setFactor(match ? match.value : "1.55");
+    const m = c.macros_porcentaje || {};
+    setPctHco(Number(m.carbohidrato ?? 55));
+    setPctProt(Number(m.proteina ?? 15));
+    setOpen(true);
+  };
 
   const fetchAll = async () => {
     const [{ data: p, error: e1 }, { data: c }] = await Promise.all([
@@ -154,8 +199,7 @@ export default function PacienteDetalle() {
       return;
     }
     setSavingConsulta(true);
-    const { error } = await supabase.from("consultas").insert({
-      paciente_id: id!,
+    const payload = {
       fecha,
       peso: pesoNum,
       talla: tallaNum || null,
@@ -170,13 +214,17 @@ export default function PacienteDetalle() {
         grasa: pctGra,
         carbohidrato: pctHco,
       },
-    });
+    };
+    const { error } = editingId
+      ? await supabase.from("consultas").update(payload).eq("id", editingId)
+      : await supabase.from("consultas").insert({ ...payload, paciente_id: id! });
     setSavingConsulta(false);
     if (error) {
       toast.error("No se pudo guardar la consulta");
       return;
     }
-    toast.success("Consulta registrada");
+    toast.success(editingId ? "Consulta actualizada" : "Consulta registrada");
+    setEditingId(null);
     setOpen(false);
     setPeso("");
     setTalla("");
@@ -209,7 +257,7 @@ export default function PacienteDetalle() {
       .select()
       .single();
     if (error) toast.error("No se pudo crear el plan");
-    else navigate(`/plan/${data.id}`);
+    else navigate(`/plan/${data.id}?paciente_id=${paciente.id}`);
   };
 
   if (loading) return <p className="text-sm text-muted-foreground">Cargando...</p>;
@@ -227,7 +275,7 @@ export default function PacienteDetalle() {
             <FileText className="mr-2 h-4 w-4" />
             Crear plan de menú
           </Button>
-          <Button onClick={() => setOpen(true)} className="rounded-xl">
+          <Button onClick={abrirNueva} className="rounded-xl">
             <Plus className="mr-2 h-4 w-4" />
             Nueva consulta
           </Button>
@@ -326,7 +374,10 @@ export default function PacienteDetalle() {
               {consultas.map((c) => (
                 <div
                   key={c.id}
-                  className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border bg-muted/30 p-4"
+                  onClick={() => abrirEditar(c)}
+                  role="button"
+                  title="Editar consulta"
+                  className="cursor-pointer transition-colors hover:bg-muted/60 flex flex-wrap items-start justify-between gap-3 rounded-2xl border bg-muted/30 p-4"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm font-semibold">
@@ -383,7 +434,11 @@ export default function PacienteDetalle() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => eliminarConsulta(c.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setToDelete(c);
+                    }}
+                    aria-label="Eliminar consulta"
                     className="text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -398,7 +453,7 @@ export default function PacienteDetalle() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Nueva consulta</DialogTitle>
+            <DialogTitle>{editingId ? "Editar consulta" : "Nueva consulta"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-4">
@@ -535,11 +590,34 @@ export default function PacienteDetalle() {
               Cancelar
             </Button>
             <Button onClick={guardarConsulta} disabled={savingConsulta} className="rounded-xl">
-              Guardar consulta
+              {editingId ? "Guardar cambios" : "Guardar consulta"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar esta consulta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se borrará la consulta del {toDelete?.fecha}. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (toDelete) eliminarConsulta(toDelete.id);
+                setToDelete(null);
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
