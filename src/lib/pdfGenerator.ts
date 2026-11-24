@@ -344,135 +344,165 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
   }
 }
 
+function gridItemLabel(item: PlanItem, data: PdfData): string {
+  const anyItem = item as any;
+  let name = "";
+  if (anyItem.nombre_override) name = anyItem.nombre_override;
+  else if (item.tipo === "personalizado") name = "Personalizado";
+  else if (item.tipo === "alimento") {
+    const al = data.alimentos.find((a) => a.id === item.item_id);
+    name = al?.nombre ?? "Alimento";
+    if (item.porcion) {
+      const baseUnit = al?.porcion ? al.porcion.replace(/^[\d.,/\s]+/, "").trim() : "";
+      return `${name} — ${item.porcion}${baseUnit ? " " + baseUnit : ""}`;
+    }
+    return name;
+  } else {
+    const rec = data.recetas.find((r) => r.id === item.item_id);
+    name = rec?.nombre ?? "Receta";
+  }
+  if (item.porcion && item.tipo !== "alimento") name += ` — ${item.porcion}`;
+  return name;
+}
+
 function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: LoadedImage | null) {
   const tiempos = (data.plan.tiempos_comida as string[]) ?? [];
   const totalWeeks = Math.ceil(data.plan.dias / 7);
+  const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const M = 11;
+  const FONT = 8;
+  const LINE_H = 3.4;
+  const PAD = 1.6;
+  const TIEMPO_W = 26;
+  const HEAD_H = 8.5;
 
   for (let week = 0; week < totalWeeks; week++) {
-    doc.addPage("landscape");
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-
-    // Header
-    doc.setDrawColor(...COLORS.gold);
-    doc.setLineWidth(0.8);
-    doc.line(15, 10, pageW - 15, 10);
-    doc.setLineWidth(0.3);
-    doc.line(15, 12, pageW - 15, 12);
-
-    if (logoData) {
-      try {
-        const logoH = 10;
-        const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
-        const logoW = logoH * aspectRatio;
-        doc.addImage(logoData.dataUrl, "PNG", pageW - 15 - logoW, 1, logoW, logoH);
-      } catch {}
-    }
-
-    doc.setFont("times", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(...COLORS.darkGold);
-    doc.text(`Semana ${week + 1}`, 15, 22);
-
     const weekStart = week * 7 + 1;
     const weekEnd = Math.min(weekStart + 6, data.plan.dias);
     const numDays = weekEnd - weekStart + 1;
+    const weekItems = data.items.filter((i) => i.dia >= weekStart && i.dia <= weekEnd);
+    if (weekItems.length === 0) continue;
+    const rowTiempos = tiempos.filter((t) => weekItems.some((i) => i.tiempo_comida === t));
+    if (rowTiempos.length === 0) continue;
 
-    const tableX = 15;
-    const tableY = 28;
-    const colW = (pageW - 30 - 50) / numDays;
-    const tiempoColW = 50;
-    const rowH = Math.min((pageH - tableY - 20) / (tiempos.length + 1), 22);
+    doc.addPage("a4", "landscape");
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const usableW = pageW - M * 2;
+    const colW = (usableW - TIEMPO_W) / 7;
+    const footerLineY = pageH - 8;
+    const bottomLimit = footerLineY - 2;
 
-    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-
-    // Header row
-    doc.setFillColor(...COLORS.gold);
-    doc.rect(tableX, tableY, tiempoColW, rowH, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(...COLORS.white);
-    doc.text("Tiempo", tableX + 3, tableY + rowH / 2 + 1);
-
-    for (let i = 0; i < numDays; i++) {
-      const x = tableX + tiempoColW + i * colW;
-      doc.setFillColor(...COLORS.gold);
-      doc.rect(x, tableY, colW, rowH, "F");
-      doc.setTextColor(...COLORS.white);
-      const dayLabel = `${dayNames[i % 7]} (Día ${weekStart + i})`;
-      doc.text(dayLabel, x + 3, tableY + rowH / 2 + 1);
-    }
-
-    // Data rows
-    for (let t = 0; t < tiempos.length; t++) {
-      const rowY = tableY + (t + 1) * rowH;
-
-      doc.setFillColor(...COLORS.creamSoft);
-      doc.rect(tableX, rowY, tiempoColW, rowH, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
+    const drawPageHeader = (): number => {
+      let logoH = 0;
+      if (logoData) {
+        try {
+          logoH = 11;
+          const logoW = logoH * (logoData.naturalWidth / logoData.naturalHeight);
+          doc.addImage(logoData.dataUrl, "PNG", pageW - M - logoW, 4, logoW, logoH);
+        } catch { logoH = 0; }
+      }
+      const lineY = 4 + Math.max(logoH, 8) + 0.8;
+      doc.setFont("times", "bold");
+      doc.setFontSize(14);
       doc.setTextColor(...COLORS.darkGold);
-      doc.text(tiempos[t], tableX + 3, rowY + 4);
-
-      for (let i = 0; i < numDays; i++) {
-        const day = weekStart + i;
-        const x = tableX + tiempoColW + i * colW;
-
-        if (t % 2 === 0) { doc.setFillColor(...COLORS.white); } else { doc.setFillColor(...COLORS.creamSoft); }
-        doc.rect(x, rowY, colW, rowH, "F");
-
-        const dayItems = data.items.filter(
-          (item) => item.dia === day && item.tiempo_comida === tiempos[t]
-        );
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(5.5);
-        doc.setTextColor(...COLORS.black);
-
-        let itemY = rowY + 4;
-        for (const item of dayItems) {
-          if (itemY > rowY + rowH - 2) break;
-          let name = "";
-          if ((item as any).nombre_override) {
-            name = (item as any).nombre_override;
-          } else if (item.tipo === "personalizado") {
-            name = "Personalizado";
-          } else if (item.tipo === "alimento") {
-            const al = data.alimentos.find((a) => a.id === item.item_id);
-            name = al?.nombre ?? "Alimento";
-          } else {
-            const rec = data.recetas.find((r) => r.id === item.item_id);
-            name = rec?.nombre ?? "Receta";
-          }
-          const truncated = name.length > 25 ? name.substring(0, 22) + "..." : name;
-          doc.text(truncated, x + 2, itemY);
-          itemY += 3.5;
+      doc.text(`Semana ${week + 1}`, M, lineY - 2);
+      doc.setDrawColor(...COLORS.gold);
+      doc.setLineWidth(0.8);
+      doc.line(M, lineY, pageW - M, lineY);
+      doc.setLineWidth(0.3);
+      doc.line(M, lineY + 1.5, pageW - M, lineY + 1.5);
+      return lineY + 4;
+    };
+    const drawPageFooter = () => {
+      doc.setDrawColor(...COLORS.gold);
+      doc.setLineWidth(0.3);
+      doc.line(M, footerLineY, pageW - M, footerLineY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...COLORS.gray);
+      const line = doc.splitTextToSize(config.contacto || "", usableW)[0] ?? "";
+      doc.text(line, pageW / 2, footerLineY + 4, { align: "center" });
+    };
+    const drawTableHeader = (y: number): number => {
+      doc.setFillColor(...COLORS.gold);
+      doc.rect(M, y, usableW, HEAD_H, "F");
+      doc.setTextColor(...COLORS.white);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("Tiempo", M + PAD, y + HEAD_H / 2 + 1.2);
+      for (let i = 0; i < 7; i++) {
+        const x = M + TIEMPO_W + i * colW;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text(dayNames[i], x + colW / 2, y + 3.4, { align: "center" });
+        if (i < numDays) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.text(`Día ${weekStart + i}`, x + colW / 2, y + 7, { align: "center" });
         }
       }
-    }
+      doc.setDrawColor(...COLORS.gold);
+      doc.setLineWidth(0.2);
+      doc.rect(M, y, usableW, HEAD_H);
+      return y + HEAD_H;
+    };
 
-    // Grid lines
-    doc.setDrawColor(...COLORS.gold);
-    doc.setLineWidth(0.2);
-    const totalW = tiempoColW + numDays * colW;
-    const totalH = (tiempos.length + 1) * rowH;
-    doc.rect(tableX, tableY, totalW, totalH);
-    for (let i = 0; i <= tiempos.length; i++) {
-      doc.line(tableX, tableY + i * rowH, tableX + totalW, tableY + i * rowH);
-    }
-    doc.line(tableX + tiempoColW, tableY, tableX + tiempoColW, tableY + totalH);
-    for (let i = 1; i < numDays; i++) {
-      const x = tableX + tiempoColW + i * colW;
-      doc.line(x, tableY, x, tableY + totalH);
-    }
+    let y = drawTableHeader(drawPageHeader());
 
-    // Footer
-    doc.setDrawColor(...COLORS.gold);
-    doc.setLineWidth(0.3);
-    doc.line(15, pageH - 10, pageW - 15, pageH - 10);
-    doc.setFontSize(6);
-    doc.setTextColor(...COLORS.gray);
-    doc.text(config.contacto, pageW / 2, pageH - 6, { align: "center" });
+    rowTiempos.forEach((tiempo, t) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(FONT);
+      const tiempoLines: string[] = doc.splitTextToSize(tiempo, TIEMPO_W - PAD * 2);
+      doc.setFont("helvetica", "normal");
+      const cells: string[][] = [];
+      for (let i = 0; i < 7; i++) {
+        const lines: string[] = [];
+        if (i < numDays) {
+          const items = data.items.filter((it) => it.dia === weekStart + i && it.tiempo_comida === tiempo);
+          for (const it of items) {
+            lines.push(...(doc.splitTextToSize(`• ${gridItemLabel(it, data)}`, colW - PAD * 2) as string[]));
+          }
+        }
+        cells.push(lines);
+      }
+      const maxLines = Math.max(tiempoLines.length, ...cells.map((c) => c.length), 1);
+      const rowH = maxLines * LINE_H + PAD * 2;
+
+      if (y + rowH > bottomLimit) {
+        drawPageFooter();
+        doc.addPage("a4", "landscape");
+        y = drawTableHeader(drawPageHeader());
+      }
+
+      doc.setFillColor(...(t % 2 === 0 ? COLORS.white : COLORS.creamSoft));
+      doc.rect(M, y, usableW, rowH, "F");
+      doc.setFillColor(...COLORS.creamSoft);
+      doc.rect(M, y, TIEMPO_W, rowH, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(FONT);
+      doc.setTextColor(...COLORS.darkGold);
+      tiempoLines.forEach((l, k) => doc.text(l, M + PAD, y + PAD + 2.6 + k * LINE_H));
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COLORS.black);
+      cells.forEach((lines, i) => {
+        const x = M + TIEMPO_W + i * colW;
+        lines.forEach((l, k) => doc.text(l, x + PAD, y + PAD + 2.6 + k * LINE_H));
+      });
+
+      doc.setDrawColor(...COLORS.gold);
+      doc.setLineWidth(0.2);
+      doc.rect(M, y, usableW, rowH);
+      for (let i = 0; i < 7; i++) {
+        const x = M + TIEMPO_W + i * colW;
+        doc.line(x, y, x, y + rowH);
+      }
+      y += rowH;
+    });
+
+    drawPageFooter();
   }
 }
 
