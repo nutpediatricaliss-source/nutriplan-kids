@@ -538,6 +538,17 @@ export default function PlanCreator() {
     };
   };
 
+  const getRecetaMacros = (itemId: string) => {
+    const r = recetas.find((x) => x.id === itemId) as any;
+    if (!r || r.kcal_porcion == null) return null;
+    return {
+      cal: Number(r.kcal_porcion) || 0,
+      prot: Number(r.proteina_g) || 0,
+      grasas: Number(r.grasa_g) || 0,
+      carbs: Number(r.carbohidrato_g) || 0,
+    };
+  };
+
   const getActiveName = () => {
     if (!activeId) return "";
     if (activeId.startsWith("alimento-")) {
@@ -1052,7 +1063,7 @@ export default function PlanCreator() {
                       ) : (
                         <div className="space-y-2">
                           {dayItems.map((item) => {
-                            const macros = item.tipo === "alimento" ? getAlimentoMacros(item.item_id) : null;
+                            const macros = item.tipo === "alimento" ? getAlimentoMacros(item.item_id) : item.tipo === "receta" ? getRecetaMacros(item.item_id) : null;
                             return (
                               <div
                                 key={item.id}
@@ -1137,6 +1148,29 @@ export default function PlanCreator() {
                                       <p className="mt-0.5 text-xs text-muted-foreground">
                                         {formatMacrosLine(macros.cal, macros.prot, macros.grasas, macros.carbs, mult)}
                                       </p>
+                                    );
+                                  })()}
+
+                                  {item.tipo === "receta" && (() => {
+                                    const rb = recetas.find((x) => x.id === item.item_id) as any;
+                                    const mult = parsePorcionMultiplier(item.porcion);
+                                    return (
+                                      <div className="mt-1 space-y-1">
+                                        {rb?.porcion_base && (
+                                          <p className="text-[10px] text-muted-foreground">Porción base: {rb.porcion_base}</p>
+                                        )}
+                                        <DebouncedInput
+                                          value={item.porcion ?? ""}
+                                          onChange={(v) => updateItem(item.id, { porcion: v })}
+                                          placeholder="Cantidad (ej. 1, 1/2, 2)"
+                                          className="h-7 text-xs"
+                                        />
+                                        {modoMacros && (
+                                          <p className="text-xs text-muted-foreground">
+                                            {macros ? formatMacrosLine(macros.cal, macros.prot, macros.grasas, macros.carbs, mult) : "sin macros"}
+                                          </p>
+                                        )}
+                                      </div>
                                     );
                                   })()}
 

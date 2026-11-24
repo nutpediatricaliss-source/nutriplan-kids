@@ -298,41 +298,56 @@ export type Database = {
       }
       recetas: {
         Row: {
+          carbohidrato_g: number | null
           created_at: string
           etiquetas: string[] | null
+          grasa_g: number | null
           id: string
           imagen_url: string | null
           incluir_detalle_pdf: boolean | null
           ingredientes: string | null
+          kcal_porcion: number | null
           nombre: string
           nota_predeterminada: string | null
+          porcion_base: string | null
           preparacion: string | null
+          proteina_g: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          carbohidrato_g?: number | null
           created_at?: string
           etiquetas?: string[] | null
+          grasa_g?: number | null
           id?: string
           imagen_url?: string | null
           incluir_detalle_pdf?: boolean | null
           ingredientes?: string | null
+          kcal_porcion?: number | null
           nombre: string
           nota_predeterminada?: string | null
+          porcion_base?: string | null
           preparacion?: string | null
+          proteina_g?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          carbohidrato_g?: number | null
           created_at?: string
           etiquetas?: string[] | null
+          grasa_g?: number | null
           id?: string
           imagen_url?: string | null
           incluir_detalle_pdf?: boolean | null
           ingredientes?: string | null
+          kcal_porcion?: number | null
           nombre?: string
           nota_predeterminada?: string | null
+          porcion_base?: string | null
           preparacion?: string | null
+          proteina_g?: number | null
           updated_at?: string
           user_id?: string
         }

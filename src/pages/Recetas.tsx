@@ -39,6 +39,11 @@ export default function Recetas() {
     nota_predeterminada: "",
     incluir_detalle_pdf: true,
     etiquetas: [] as string[],
+    porcion_base: "",
+    kcal_porcion: "",
+    proteina_g: "",
+    grasa_g: "",
+    carbohidrato_g: "",
   });
 
   const [tagInput, setTagInput] = useState("");
@@ -65,6 +70,11 @@ export default function Recetas() {
       nota_predeterminada: "",
       incluir_detalle_pdf: true,
       etiquetas: [],
+      porcion_base: "",
+      kcal_porcion: "",
+      proteina_g: "",
+      grasa_g: "",
+      carbohidrato_g: "",
     });
     setTagInput("");
     setEditing(null);
@@ -80,6 +90,11 @@ export default function Recetas() {
       nota_predeterminada: r.nota_predeterminada ?? "",
       incluir_detalle_pdf: r.incluir_detalle_pdf ?? true,
       etiquetas: ((r as any).etiquetas as string[]) ?? [],
+      porcion_base: r.porcion_base ?? "",
+      kcal_porcion: r.kcal_porcion?.toString() ?? "",
+      proteina_g: r.proteina_g?.toString() ?? "",
+      grasa_g: r.grasa_g?.toString() ?? "",
+      carbohidrato_g: r.carbohidrato_g?.toString() ?? "",
     });
     setDialogOpen(true);
   };
@@ -129,7 +144,15 @@ export default function Recetas() {
     e.preventDefault();
     if (!form.nombre.trim()) return;
 
-    const payload: any = { ...form };
+    const num = (v: string) => { const n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? null : n; };
+    const payload: any = {
+      ...form,
+      porcion_base: form.porcion_base.trim() || null,
+      kcal_porcion: num(form.kcal_porcion),
+      proteina_g: num(form.proteina_g),
+      grasa_g: num(form.grasa_g),
+      carbohidrato_g: num(form.carbohidrato_g),
+    };
 
     if (editing) {
       const { error } = await supabase
@@ -238,7 +261,18 @@ export default function Recetas() {
       detalle_pdf: "incluir_detalle_pdf",
       etiquetas: "etiquetas",
       tags: "etiquetas",
+      porcion_base: "porcion_base",
+      porción_base: "porcion_base",
+      kcal_porcion: "kcal_porcion",
+      kcal_porción: "kcal_porcion",
+      kcal: "kcal_porcion",
+      proteina_g: "proteina_g",
+      proteína_g: "proteina_g",
+      grasa_g: "grasa_g",
+      carbohidrato_g: "carbohidrato_g",
+      carbohidratos_g: "carbohidrato_g",
     };
+    const numericFields = ["kcal_porcion", "proteina_g", "grasa_g", "carbohidrato_g"];
 
     const mapped = rows
       .map((row) => {
@@ -252,8 +286,12 @@ export default function Recetas() {
             } else if (mapped_key === "etiquetas") {
               const v = String(val).trim();
               item[mapped_key] = v ? v.split(/[,;|]/).map((t: string) => t.trim()).filter(Boolean) : [];
+            } else if (numericFields.includes(mapped_key)) {
+              const n = parseFloat(String(val ?? "").replace(",", ".").trim());
+              if (!isNaN(n)) item[mapped_key] = n;
             } else {
-              item[mapped_key] = val;
+              const v = typeof val === "string" ? val.trim() : val;
+              if (v !== "" && v != null) item[mapped_key] = v;
             }
           }
         }
@@ -266,14 +304,36 @@ export default function Recetas() {
       return;
     }
 
-    let inserted = 0;
-    for (let i = 0; i < mapped.length; i += 500) {
-      const batch = mapped.slice(i, i + 500) as any[];
+    const norm = (n: string) => String(n).trim().toLowerCase();
+    const existing = new Map(recetas.map((r) => [norm(r.nombre), r]));
+    const toInsert: any[] = [];
+    const createdNames: string[] = [];
+    let updated = 0;
+    for (const item of mapped) {
+      const ex = existing.get(norm(item.nombre));
+      if (ex) {
+        const { user_id, nombre, ...rest } = item;
+        // etiquetas vacías no deben borrar las existentes
+        if (Array.isArray(rest.etiquetas) && rest.etiquetas.length === 0) delete rest.etiquetas;
+        if (Object.keys(rest).length === 0) { updated++; continue; }
+        const { error } = await supabase.from("recetas").update(rest).eq("id", ex.id);
+        if (!error) updated++;
+      } else {
+        item.nombre = String(item.nombre).trim();
+        if (Array.isArray(item.etiquetas) && item.etiquetas.length === 0) delete item.etiquetas;
+        toInsert.push(item);
+      }
+    }
+    for (let i = 0; i < toInsert.length; i += 500) {
+      const batch = toInsert.slice(i, i + 500);
       const { error } = await supabase.from("recetas").insert(batch);
-      if (!error) inserted += batch.length;
+      if (!error) createdNames.push(...batch.map((b) => b.nombre));
     }
 
-    toast.success(`${inserted} recetas importadas`);
+    toast.success(`${updated} actualizadas, ${createdNames.length} creadas`, {
+      description: createdNames.length ? `Nuevas: ${createdNames.join(", ")}` : undefined,
+      duration: 10000,
+    });
     fetchRecetas();
     if (importRef.current) importRef.current.value = "";
   };
@@ -362,6 +422,32 @@ export default function Recetas() {
                       ))}
                     </div>
                   )}
+                </div>
+                <div className="space-y-2 rounded-xl border p-3">
+                  <Label>Macros por porción (opcional)</Label>
+                  <Input
+                    value={form.porcion_base}
+                    onChange={(e) => setForm({ ...form, porcion_base: e.target.value })}
+                    placeholder="Porción base, ej. 1 taza"
+                  />
+                  <div className="grid grid-cols-4 gap-2">
+                    {([
+                      ["kcal_porcion", "Kcal"],
+                      ["proteina_g", "Prot g"],
+                      ["grasa_g", "Grasa g"],
+                      ["carbohidrato_g", "Carb g"],
+                    ] as const).map(([k, l]) => (
+                      <div key={k} className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground">{l}</span>
+                        <Input
+                          inputMode="decimal"
+                          value={form[k]}
+                          onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Ingredientes</Label>
@@ -478,7 +564,17 @@ export default function Recetas() {
                 </div>
               )}
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">{r.nombre}</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">
+                  {r.nombre}
+                  {r.kcal_porcion == null && (
+                    <span className="text-[10px] font-normal text-muted-foreground border rounded-full px-1.5">sin macros</span>
+                  )}
+                </CardTitle>
+                {r.kcal_porcion != null && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {r.porcion_base ? `${r.porcion_base} · ` : ""}{Math.round(Number(r.kcal_porcion))} kcal · P {Number(r.proteina_g ?? 0).toFixed(1)}G · G {Number(r.grasa_g ?? 0).toFixed(1)}G · C {Number(r.carbohidrato_g ?? 0).toFixed(1)}G
+                  </p>
+                )}
                 {r.nota_predeterminada && (
                   <p className="text-xs text-muted-foreground italic">{r.nota_predeterminada}</p>
                 )}

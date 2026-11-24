@@ -1,0 +1,1 @@
+ALTER TABLE public.recetas ADD COLUMN IF NOT EXISTS porcion_base text, ADD COLUMN IF NOT EXISTS kcal_porcion numeric, ADD COLUMN IF NOT EXISTS proteina_g numeric, ADD COLUMN IF NOT EXISTS grasa_g numeric, ADD COLUMN IF NOT EXISTS carbohidrato_g numeric;
