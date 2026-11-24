@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import GoalBar from "@/components/GoalBar";
+import { metaDesdeConsulta, type Macros4 } from "@/lib/goalProgress";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -549,6 +551,61 @@ export default function PlanCreator() {
     };
   };
 
+  // ─── Meta del paciente ─────────────────────────────────────────────────
+  const [metaConsulta, setMetaConsulta] = useState<{ meta: Macros4; fuente: string } | null>(null);
+  const [metaManual, setMetaManual] = useState<Macros4 | null>(null);
+  const planPacienteId = plan?.paciente_id ?? null;
+  useEffect(() => {
+    if (!id) return;
+    try {
+      const raw = localStorage.getItem(`plan-meta-${id}`);
+      setMetaManual(raw ? JSON.parse(raw) : null);
+    } catch { setMetaManual(null); }
+  }, [id]);
+  useEffect(() => {
+    if (!planPacienteId) { setMetaConsulta(null); return; }
+    let cancel = false;
+    supabase
+      .from("consultas")
+      .select("fecha, ree_kcal, macros_porcentaje")
+      .eq("paciente_id", planPacienteId)
+      .order("fecha", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (cancel) return;
+        const c = data?.[0];
+        if (c && c.ree_kcal) {
+          // ree_kcal ya es el requerimiento total (TMB × factor de actividad)
+          setMetaConsulta({ meta: metaDesdeConsulta(Number(c.ree_kcal), c.macros_porcentaje as any), fuente: `Consulta del ${c.fecha}` });
+        } else setMetaConsulta(null);
+      });
+    return () => { cancel = true; };
+  }, [planPacienteId]);
+  const saveMetaManual = (m: Macros4 | null) => {
+    setMetaManual(m);
+    if (!id) return;
+    if (m) localStorage.setItem(`plan-meta-${id}`, JSON.stringify(m));
+    else localStorage.removeItem(`plan-meta-${id}`);
+  };
+  const llevoDia = useMemo<Macros4>(() => {
+    const t = { kcal: 0, prot: 0, grasa: 0, carbs: 0 };
+    for (const i of items) {
+      if (i.dia !== currentDay) continue;
+      let m: { cal: number; prot: number; grasas: number; carbs: number } | null = null;
+      if (i.tipo === "alimento") m = getAlimentoMacros(i.item_id);
+      else if (i.tipo === "receta") m = getRecetaMacros(i.item_id);
+      if (!m) continue;
+      const mult = parsePorcionMultiplier(i.porcion);
+      t.kcal += (Number(m.cal) || 0) * mult;
+      t.prot += (Number(m.prot) || 0) * mult;
+      t.grasa += (Number(m.grasas) || 0) * mult;
+      t.carbs += (Number(m.carbs) || 0) * mult;
+    }
+    return t;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, currentDay, alimentos, recetas]);
+
   const getActiveName = () => {
     if (!activeId) return "";
     if (activeId.startsWith("alimento-")) {
@@ -1024,6 +1081,13 @@ export default function PlanCreator() {
 
           {/* Canvas - 2/3 width */}
           <div className="flex-1 space-y-4">
+            <GoalBar
+              llevo={llevoDia}
+              meta={metaConsulta?.meta ?? metaManual}
+              fuente={metaConsulta?.fuente ?? null}
+              manual={metaManual}
+              onManualChange={saveMetaManual}
+            />
             <p className="text-xs font-semibold text-muted-foreground">
               Día {currentDay} — Semana {Math.ceil(currentDay / 7)}
             </p>
