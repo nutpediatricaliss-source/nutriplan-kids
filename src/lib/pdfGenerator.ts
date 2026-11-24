@@ -110,6 +110,55 @@ function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] 
   return doc.splitTextToSize(text, maxWidth);
 }
 
+// Trims the transparent padding around the mark and resamples it larger, so the
+// logo can be printed at a legible size without blocky pixels.
+async function cropLogoToInk(logoData: LoadedImage): Promise<LoadedImage> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = logoData.dataUrl;
+  });
+
+  const src = document.createElement("canvas");
+  src.width = img.naturalWidth;
+  src.height = img.naturalHeight;
+  const sctx = src.getContext("2d")!;
+  sctx.drawImage(img, 0, 0);
+
+  const { data, width, height } = sctx.getImageData(0, 0, src.width, src.height);
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0 || maxY < 0) return logoData;
+
+  const inkW = maxX - minX + 1;
+  const inkH = maxY - minY + 1;
+  const scale = Math.max(1, Math.min(8, Math.round(800 / inkH)));
+
+  const out = document.createElement("canvas");
+  out.width = inkW * scale;
+  out.height = inkH * scale;
+  const octx = out.getContext("2d")!;
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = "high";
+  octx.drawImage(img, minX, minY, inkW, inkH, 0, 0, out.width, out.height);
+
+  return {
+    dataUrl: out.toDataURL("image/png"),
+    naturalWidth: out.width,
+    naturalHeight: out.height,
+  };
+}
+
 function drawBulletList(doc: jsPDF, lines: string[], startY: number, maxWidth: number): number {
   let y = startY;
   for (const line of lines) {
@@ -393,26 +442,29 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
     const footerLineY = pageH - 8;
     const bottomLimit = footerLineY - 2;
 
+    // Header row: title on the left, logo on the right, golden lines below.
+    const LOGO_TOP = 2.5;
+    const LOGO_H = 19; // mm — clearly legible, keeps the source 200x200 px sharp (~268 dpi)
     const drawPageHeader = (): number => {
-      let logoH = 0;
+      let rowBottom = LOGO_TOP + 8;
       if (logoData) {
         try {
-          logoH = 11;
-          const logoW = logoH * (logoData.naturalWidth / logoData.naturalHeight);
-          doc.addImage(logoData.dataUrl, "PNG", pageW - M - logoW, 4, logoW, logoH);
-        } catch { logoH = 0; }
+          const logoW = LOGO_H * (logoData.naturalWidth / logoData.naturalHeight);
+          doc.addImage(logoData.dataUrl, "PNG", pageW - M - logoW, LOGO_TOP, logoW, LOGO_H);
+          rowBottom = LOGO_TOP + LOGO_H;
+        } catch { /* logo failed */ }
       }
-      const lineY = 4 + Math.max(logoH, 8) + 0.8;
+      const lineY = rowBottom + 0.6;
       doc.setFont("times", "bold");
       doc.setFontSize(14);
       doc.setTextColor(...COLORS.darkGold);
-      doc.text(`Semana ${week + 1}`, M, lineY - 2);
+      doc.text(`Semana ${week + 1}`, M, LOGO_TOP + (rowBottom - LOGO_TOP) / 2 + 2.6);
       doc.setDrawColor(...COLORS.gold);
       doc.setLineWidth(0.8);
       doc.line(M, lineY, pageW - M, lineY);
       doc.setLineWidth(0.3);
       doc.line(M, lineY + 1.5, pageW - M, lineY + 1.5);
-      return lineY + 4;
+      return lineY + 2.5;
     };
     const drawPageFooter = () => {
       doc.setDrawColor(...COLORS.gold);
@@ -728,6 +780,16 @@ export async function generatePdf(data: PdfData, config: PdfConfig) {
     logoData = await loadImageWithDimensions("/images/logo.png");
   } catch { /* */ }
 
+  // The horizontal menu sheets print the mark larger, so they use a version
+  // trimmed to its own outline and resampled; the rest of the PDF keeps the
+  // original file untouched.
+  let gridLogoData: LoadedImage | null = logoData;
+  if (logoData) {
+    try {
+      gridLogoData = await cropLogoToInk(logoData);
+    } catch { gridLogoData = logoData; }
+  }
+
   // 1. Portada
   renderPortada(doc, data.plan, logoData);
 
@@ -738,7 +800,7 @@ export async function generatePdf(data: PdfData, config: PdfConfig) {
 
   // 3. Menú diario
   if (config.estilo === "grid") {
-    renderMenuGrid(doc, data, config, logoData);
+    renderMenuGrid(doc, data, config, gridLogoData);
   } else {
     await renderMenuLista(doc, data, config, logoData);
   }
