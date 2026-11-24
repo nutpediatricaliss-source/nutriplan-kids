@@ -8,6 +8,13 @@
       "when": 1795555845922,
       "tag": "0000_recetas_macros",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795555968334,
+      "tag": "0001_storage_receta_imagenes_owner",
+      "breakpoints": true
     }
   ]
 }
