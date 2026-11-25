@@ -244,33 +244,29 @@ function renderPortada(doc: jsPDF, plan: PlanMenu, logoData: LoadedImage | null)
 
   drawDecorativeBlobs(doc);
 
-  doc.setDrawColor(...COLORS.darkGold);
-  doc.setLineWidth(0.3);
-  doc.rect(25, 25, w - 50, h - 50);
-
   doc.setFontSize(32);
   doc.setFont("times", "bold");
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("Plan Nutricional", w / 2, h * 0.35, { align: "center" });
+  doc.text("Plan Nutricional", w / 2, h * 0.34, { align: "center" });
 
-  doc.setFontSize(18);
+  doc.setFontSize(20);
   doc.setFont("times", "normal");
   doc.setTextColor(...COLORS.black);
-  doc.text(plan.nombre_paciente, w / 2, h * 0.43, { align: "center" });
+  doc.text(plan.nombre_paciente, w / 2, h * 0.34 + 18, { align: "center" });
+
+  doc.setFontSize(14);
+  doc.setTextColor(...COLORS.gray);
+  doc.text("Consulta de Nutrición Pediátrica", w / 2, h * 0.34 + 33, { align: "center" });
 
   doc.setFontSize(12);
-  doc.setTextColor(...COLORS.gray);
-  doc.text("Consulta de Nutrición Pediátrica", w / 2, h * 0.50, { align: "center" });
-
-  doc.setFontSize(10);
-  doc.text(`${plan.dias} días`, w / 2, h * 0.55, { align: "center" });
+  doc.text(`${plan.dias} días`, w / 2, h * 0.34 + 44, { align: "center" });
 
   if (logoData) {
     try {
-      const logoH = 25;
+      const logoW = 55;
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
-      const logoW = logoH * aspectRatio;
-      doc.addImage(logoData.dataUrl, "PNG", w / 2 - logoW / 2, h * 0.72, logoW, logoH);
+      const logoH = logoW / aspectRatio;
+      doc.addImage(logoData.dataUrl, "PNG", w / 2 - logoW / 2, h - 40 - logoH, logoW, logoH);
     } catch { /* */ }
   }
 }
@@ -833,32 +829,28 @@ function renderAgradecimiento(doc: jsPDF, config: PdfConfig, logoData: LoadedIma
 
   drawDecorativeBlobs(doc);
 
-  doc.setDrawColor(...COLORS.darkGold);
-  doc.setLineWidth(0.3);
-  doc.rect(25, 25, w - 50, h - 50);
-
   doc.setFont("times", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(30);
   doc.setTextColor(...COLORS.darkGold);
-  doc.text("¡Gracias!", w / 2, h * 0.35, { align: "center" });
+  doc.text("¡Gracias!", w / 2, h * 0.32, { align: "center" });
 
   doc.setFont("times", "normal");
-  doc.setFontSize(12);
+  doc.setFontSize(14);
   doc.setTextColor(...COLORS.black);
 
-  const lines = splitTextToLines(doc, config.mensajeAgradecimiento, w - 80);
-  let y = h * 0.43;
+  const lines = splitTextToLines(doc, config.mensajeAgradecimiento, 120);
+  let y = h * 0.32 + 18;
   for (const line of lines) {
     doc.text(line, w / 2, y, { align: "center" });
-    y += 6;
+    y += 7.4; // 14 pt × 1.5 line spacing
   }
 
   if (logoData) {
     try {
-      const logoH = 25;
+      const logoW = 55;
       const aspectRatio = logoData.naturalWidth / logoData.naturalHeight;
-      const logoW = logoH * aspectRatio;
-      doc.addImage(logoData.dataUrl, "PNG", w / 2 - logoW / 2, h * 0.72, logoW, logoH);
+      const logoH = logoW / aspectRatio;
+      doc.addImage(logoData.dataUrl, "PNG", w / 2 - logoW / 2, h - 40 - logoH, logoW, logoH);
     } catch { /* */ }
   }
 }
@@ -884,7 +876,7 @@ export async function generatePdf(data: PdfData, config: PdfConfig) {
   }
 
   // 1. Portada
-  renderPortada(doc, data.plan, logoData);
+  renderPortada(doc, data.plan, gridLogoData);
 
   // 2. Generalidades
   if (config.generalidades.trim()) {
@@ -912,7 +904,7 @@ export async function generatePdf(data: PdfData, config: PdfConfig) {
   await renderRecetas(doc, data, config, logoData);
 
   // 7. Agradecimiento
-  renderAgradecimiento(doc, config, logoData);
+  renderAgradecimiento(doc, config, gridLogoData);
 
   // Download
   const filename = `Plan_Nutricional_${data.plan.nombre_paciente.replace(/\s+/g, "_")}.pdf`;
