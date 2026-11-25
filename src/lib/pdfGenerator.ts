@@ -444,7 +444,7 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
 
     // Header row: title on the left, logo on the right, golden lines below.
     const LOGO_TOP = 2.5;
-    const LOGO_H = 19; // mm — clearly legible, keeps the source 200x200 px sharp (~268 dpi)
+    const LOGO_H = 14; // mm — reduced from 19 mm per request; keeps the source 200x200 px sharp (~364 dpi)
     const drawPageHeader = (): number => {
       let rowBottom = LOGO_TOP + 8;
       if (logoData) {
