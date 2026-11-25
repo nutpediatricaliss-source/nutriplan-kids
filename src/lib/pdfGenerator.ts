@@ -258,14 +258,83 @@ function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: LoadedImag
   drawFooter(doc, config.contacto);
 }
 
+type ListRun = { text: string; bold: boolean; gold: boolean };
+
+function listItemLabel(item: PlanItem, data: PdfData): string {
+  const anyItem = item as any;
+  let name = "";
+  let qty = "";
+  if (anyItem.nombre_override) name = anyItem.nombre_override;
+  else if (item.tipo === "personalizado") name = "Alimento personalizado";
+  else if (item.tipo === "alimento") {
+    const al = data.alimentos.find((a) => a.id === item.item_id);
+    name = al?.nombre ?? "Alimento";
+  } else {
+    const rec = data.recetas.find((r) => r.id === item.item_id);
+    name = rec?.nombre ?? "Receta";
+  }
+  if (item.porcion) {
+    if (item.tipo === "alimento") {
+      const al = data.alimentos.find((a) => a.id === item.item_id);
+      const baseUnit = al?.porcion ? al.porcion.replace(/^[\d.,/\s]+/, "").trim() : "";
+      qty = `${item.porcion}${baseUnit ? " " + baseUnit : ""}`;
+    } else {
+      qty = String(item.porcion);
+    }
+  }
+  let label = qty ? `${name} (${qty})` : name;
+  if (item.nota_menu) label += ` (${item.nota_menu})`;
+  return label;
+}
+
+/** Word-wraps mixed-style runs into lines. */
+function wrapRuns(doc: jsPDF, runs: ListRun[], maxW: number, fontSize: number): ListRun[][] {
+  const setStyle = (bold: boolean) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(fontSize);
+  };
+  const words: ListRun[] = [];
+  for (const r of runs) {
+    for (const w of r.text.split(/\s+/).filter(Boolean)) words.push({ ...r, text: w });
+  }
+  const lines: ListRun[][] = [];
+  let cur: ListRun[] = [];
+  let curW = 0;
+  for (const w of words) {
+    setStyle(w.bold);
+    const ww = doc.getTextWidth(w.text);
+    const sp = cur.length ? doc.getTextWidth(" ") : 0;
+    if (cur.length && curW + sp + ww > maxW) {
+      lines.push(cur);
+      cur = [w];
+      curW = ww;
+    } else {
+      cur.push(w);
+      curW += sp + ww;
+    }
+  }
+  if (cur.length) lines.push(cur);
+  return lines;
+}
+
 async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: LoadedImage | null) {
   const tiempos = (data.plan.tiempos_comida as string[]) ?? [];
   const totalWeeks = Math.ceil(data.plan.dias / 7);
   const pageW = doc.internal.pageSize.getWidth();
   const IMG_SIZE = 38;
   const IMG_MARGIN = 6;
+  const FONT = 8.5;
+  const LINE_H = 3.9;
+  const TIEMPO_GAP = 1.4;
+  const DAY_GAP = 4;
+  const BOTTOM = FOOTER_Y - 4;
 
   for (let week = 0; week < totalWeeks; week++) {
+    const weekStart = week * 7 + 1;
+    const weekEnd = Math.min(weekStart + 6, data.plan.dias);
+    const weekHasItems = data.items.some((i) => i.dia >= weekStart && i.dia <= weekEnd);
+    if (!weekHasItems) continue;
+
     doc.addPage();
     addHeaderWithLogo(doc, logoData);
 
@@ -274,24 +343,15 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
     doc.setTextColor(...COLORS.darkGold);
     doc.text(`Semana ${week + 1}`, MARGIN, 35);
 
-    const weekStart = week * 7 + 1;
-    const weekEnd = Math.min(weekStart + 6, data.plan.dias);
     let y = 45;
 
     for (let day = weekStart; day <= weekEnd; day++) {
-      if (y > 250) {
-        drawFooter(doc, config.contacto);
-        doc.addPage();
-        addHeaderWithLogo(doc, logoData);
-        y = 30;
-      }
+      const dayAll = data.items.filter((i) => i.dia === day);
+      if (dayAll.length === 0) continue;
 
-      // Find first recipe image for this day
-      const dayRecipeItems = data.items.filter(
-        (i) => i.dia === day && i.tipo === "receta"
-      );
+      // Find first recipe image for this day (unchanged)
       let dayImageData: string | null = null;
-      for (const ri of dayRecipeItems) {
+      for (const ri of dayAll.filter((i) => i.tipo === "receta")) {
         const rec = data.recetas.find((r) => r.id === ri.item_id);
         if (rec?.imagen_url) {
           try {
@@ -306,92 +366,85 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
         ? pageW - MARGIN * 2 - IMG_SIZE - IMG_MARGIN
         : pageW - MARGIN * 2;
 
-      const dayStartY = y;
-
-      // Day header
-      doc.setFillColor(...COLORS.cream);
-      doc.roundedRect(MARGIN, y - 4, textMaxW, 8, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...COLORS.darkGold);
-      doc.text(`Día ${day}`, MARGIN + 4, y + 1.5);
-      y += 10;
-
-      for (const tiempo of tiempos) {
-        const dayItems = data.items.filter(
-          (i) => i.dia === day && i.tiempo_comida === tiempo
-        );
+      // Build paragraphs per meal time
+      const paragraphs: ListRun[][][] = [];
+      const usedTiempos = [...tiempos, ...Array.from(new Set(dayAll.map((i) => i.tiempo_comida))).filter((t) => !tiempos.includes(t))];
+      for (const tiempo of usedTiempos) {
+        const dayItems = dayAll.filter((i) => i.tiempo_comida === tiempo);
         if (dayItems.length === 0) continue;
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8.5);
-        doc.setTextColor(...COLORS.darkGold);
-        doc.text(tiempo, MARGIN + 4, y);
-        y += 4;
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(...COLORS.black);
-
-        for (const item of dayItems) {
-          let name = "";
-          if ((item as any).nombre_override) {
-            name = (item as any).nombre_override;
-          } else if (item.tipo === "personalizado") {
-            name = "Alimento personalizado";
-          } else if (item.tipo === "alimento") {
-            const al = data.alimentos.find((a) => a.id === item.item_id);
-            name = al?.nombre ?? "Alimento";
-            if (item.porcion) {
-              const baseUnit = al?.porcion
-                ? al.porcion.replace(/^[\d.,/\s]+/, "").trim()
-                : "";
-              name += ` — ${item.porcion}${baseUnit ? " " + baseUnit : ""}`;
-            }
-          } else {
-            const rec = data.recetas.find((r) => r.id === item.item_id);
-            name = rec?.nombre ?? "Receta";
-          }
-          if (item.nota_menu) name += ` (${item.nota_menu})`;
-
-          const lines = splitTextToLines(doc, `• ${name}`, textMaxW - 10);
-          for (const l of lines) {
-            if (y > FOOTER_Y - 10) {
-              drawFooter(doc, config.contacto);
-              doc.addPage();
-              addHeaderWithLogo(doc, logoData);
-              y = 30;
-            }
-            doc.text(l, MARGIN + 8, y);
-            y += 4;
-          }
-        }
-        y += 2;
+        const runs: ListRun[] = [{ text: `${tiempo}:`, bold: true, gold: true }];
+        dayItems.forEach((it, idx) => {
+          if (idx > 0) runs.push({ text: "+", bold: true, gold: true });
+          runs.push({ text: listItemLabel(it, data), bold: false, gold: false });
+        });
+        paragraphs.push(wrapRuns(doc, runs, textMaxW, FONT));
       }
 
-      // Draw the day image on the right side
+      // Measure block height
+      const HEADER_H = 6.5;
+      let textH = HEADER_H;
+      paragraphs.forEach((p, i) => {
+        textH += p.length * LINE_H + (i < paragraphs.length - 1 ? TIEMPO_GAP : 0);
+      });
+      const blockH = Math.max(textH, hasImage ? IMG_SIZE + 2 : 0);
+
+      if (y - 4 + blockH > BOTTOM && y > 46) {
+        drawFooter(doc, config.contacto);
+        doc.addPage();
+        addHeaderWithLogo(doc, logoData);
+        y = 34;
+      }
+
+      const dayStartY = y;
+
+      // Day title with thin gold line
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(...COLORS.darkGold);
+      doc.text(`Día ${day}`, MARGIN, y);
+      doc.setDrawColor(...COLORS.gold);
+      doc.setLineWidth(0.3);
+      doc.line(MARGIN, y + 1.3, MARGIN + textMaxW, y + 1.3);
+      y += HEADER_H - 1;
+
+      paragraphs.forEach((p, pi) => {
+        for (const line of p) {
+          let x = MARGIN;
+          line.forEach((w, wi) => {
+            doc.setFont("helvetica", w.bold ? "bold" : "normal");
+            doc.setFontSize(FONT);
+            if (wi > 0) x += doc.getTextWidth(" ");
+            doc.setTextColor(...(w.gold ? COLORS.darkGold : COLORS.black));
+            doc.text(w.text, x, y);
+            x += doc.getTextWidth(w.text);
+          });
+          y += LINE_H;
+        }
+        if (pi < paragraphs.length - 1) y += TIEMPO_GAP;
+      });
+
+      // Draw the day image on the right side (unchanged)
       if (hasImage && dayImageData) {
         const imgY = dayStartY - 2;
         const imgX = pageW - MARGIN - IMG_SIZE;
         try {
-          // Draw a soft rounded border
           doc.setDrawColor(...COLORS.gold);
           doc.setLineWidth(0.4);
           doc.roundedRect(imgX - 1, imgY - 1, IMG_SIZE + 2, IMG_SIZE + 2, 3, 3, "S");
           doc.addImage(dayImageData, "JPEG", imgX, imgY, IMG_SIZE, IMG_SIZE);
         } catch { /* image failed */ }
-        // Ensure y is at least past the image
         if (y < imgY + IMG_SIZE + 4) {
           y = imgY + IMG_SIZE + 4;
         }
       }
 
-      y += 4;
+      y += DAY_GAP;
     }
 
     drawFooter(doc, config.contacto);
   }
 }
+
 
 function gridItemLabel(item: PlanItem, data: PdfData): string {
   const anyItem = item as any;
