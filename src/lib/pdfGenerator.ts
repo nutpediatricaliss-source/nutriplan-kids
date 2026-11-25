@@ -38,6 +38,46 @@ interface LoadedImage {
   naturalHeight: number;
 }
 
+/** Loads an image cropped (object-fit: cover) to wMm×hMm with rounded corners baked in (transparent PNG). */
+function loadImageCoverRounded(url: string, wMm: number, hMm: number, rMm: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const PX = 16; // px per mm
+      const W = Math.round(wMm * PX), H = Math.round(hMm * PX), R = rMm * PX;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+      ctx.beginPath();
+      ctx.moveTo(R, 0);
+      ctx.arcTo(W, 0, W, H, R);
+      ctx.arcTo(W, H, 0, H, R);
+      ctx.arcTo(0, H, 0, 0, R);
+      ctx.arcTo(0, 0, W, 0, R);
+      ctx.closePath();
+      ctx.clip();
+      const scale = Math.max(W / img.width, H / img.height);
+      const dw = img.width * scale, dh = img.height * scale;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function mealPriority(tiempo: string): number {
+  const t = tiempo.toLowerCase();
+  if (t.includes("colaci") || t.includes("snack") || t.includes("merienda")) return 3;
+  if (t.includes("comida") || t.includes("almuerzo")) return 0;
+  if (t.includes("cena")) return 1;
+  if (t.includes("desayuno")) return 2;
+  return 4;
+}
+
 function loadImage(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -322,6 +362,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
   const totalWeeks = Math.ceil(data.plan.dias / 7);
   const pageW = doc.internal.pageSize.getWidth();
   const IMG_SIZE = 38;
+  const IMG_H = 28.5; // 4:3
   const IMG_MARGIN = 6;
   const FONT = 8.5;
   const LINE_H = 3.9;
@@ -349,13 +390,18 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
       const dayAll = data.items.filter((i) => i.dia === day);
       if (dayAll.length === 0) continue;
 
-      // Find first recipe image for this day (unchanged)
+      // One image per day: first recipe with image, by meal priority
       let dayImageData: string | null = null;
-      for (const ri of dayAll.filter((i) => i.tipo === "receta")) {
+      const recItems = dayAll
+        .filter((i) => i.tipo === "receta")
+        .map((i, idx) => ({ i, idx }))
+        .sort((a, b) => mealPriority(a.i.tiempo_comida) - mealPriority(b.i.tiempo_comida) || a.idx - b.idx)
+        .map((x) => x.i);
+      for (const ri of recItems) {
         const rec = data.recetas.find((r) => r.id === ri.item_id);
         if (rec?.imagen_url) {
           try {
-            dayImageData = await loadImage(rec.imagen_url);
+            dayImageData = await loadImageCoverRounded(rec.imagen_url, IMG_SIZE, IMG_H, 4);
             break;
           } catch { /* skip */ }
         }
@@ -386,7 +432,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
       paragraphs.forEach((p, i) => {
         textH += p.length * LINE_H + (i < paragraphs.length - 1 ? TIEMPO_GAP : 0);
       });
-      const blockH = Math.max(textH, hasImage ? IMG_SIZE + 2 : 0);
+      const blockH = Math.max(textH, hasImage ? IMG_H + 1 : 0);
 
       if (y - 4 + blockH > BOTTOM && y > 46) {
         drawFooter(doc, config.contacto);
@@ -422,19 +468,14 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
         if (pi < paragraphs.length - 1) y += TIEMPO_GAP;
       });
 
-      // Draw the day image on the right side (unchanged)
+      // Day image: top-right, aligned with the day strip, no border
       if (hasImage && dayImageData) {
-        const imgY = dayStartY - 2;
+        const imgY = dayStartY - 4.2;
         const imgX = pageW - MARGIN - IMG_SIZE;
         try {
-          doc.setDrawColor(...COLORS.gold);
-          doc.setLineWidth(0.4);
-          doc.roundedRect(imgX - 1, imgY - 1, IMG_SIZE + 2, IMG_SIZE + 2, 3, 3, "S");
-          doc.addImage(dayImageData, "JPEG", imgX, imgY, IMG_SIZE, IMG_SIZE);
+          doc.addImage(dayImageData, "PNG", imgX, imgY, IMG_SIZE, IMG_H);
         } catch { /* image failed */ }
-        if (y < imgY + IMG_SIZE + 4) {
-          y = imgY + IMG_SIZE + 4;
-        }
+        if (y < imgY + IMG_H + 1) y = imgY + IMG_H + 1;
       }
 
       y += DAY_GAP;
