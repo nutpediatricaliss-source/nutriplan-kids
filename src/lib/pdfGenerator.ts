@@ -381,7 +381,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
       }
 
       // Measure block height
-      const HEADER_H = 6.5;
+      const HEADER_H = 8;
       let textH = HEADER_H;
       paragraphs.forEach((p, i) => {
         textH += p.length * LINE_H + (i < paragraphs.length - 1 ? TIEMPO_GAP : 0);
