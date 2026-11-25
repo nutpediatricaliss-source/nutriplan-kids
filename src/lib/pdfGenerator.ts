@@ -397,14 +397,13 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
 
       const dayStartY = y;
 
-      // Day title with thin gold line
+      // Day title on a thin rounded cream strip
+      doc.setFillColor(...COLORS.cream);
+      doc.roundedRect(MARGIN, y - 4.2, textMaxW, 6.5, 2, 2, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10.5);
       doc.setTextColor(...COLORS.darkGold);
-      doc.text(`Día ${day}`, MARGIN, y);
-      doc.setDrawColor(...COLORS.gold);
-      doc.setLineWidth(0.3);
-      doc.line(MARGIN, y + 1.3, MARGIN + textMaxW, y + 1.3);
+      doc.text(`Día ${day}`, MARGIN + 4, y + 0.4);
       y += HEADER_H - 1;
 
       paragraphs.forEach((p, pi) => {
