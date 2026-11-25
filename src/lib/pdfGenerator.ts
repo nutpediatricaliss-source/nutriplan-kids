@@ -454,7 +454,7 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
           rowBottom = LOGO_TOP + LOGO_H;
         } catch { /* logo failed */ }
       }
-      const lineY = rowBottom + 0.6;
+      const lineY = rowBottom + 2;
       doc.setFont("times", "bold");
       doc.setFontSize(14);
       doc.setTextColor(...COLORS.darkGold);
