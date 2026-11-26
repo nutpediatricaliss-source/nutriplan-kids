@@ -8,6 +8,7 @@ import type { PlanMenu, PlanItem, Alimento, Receta } from "@/lib/types";
 import PdfConfigDialog from "@/components/PdfConfigDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -292,6 +293,9 @@ export default function PlanCreator() {
   const [expandedWeek, setExpandedWeek] = useState(0);
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [templateDirty, setTemplateDirty] = useState(false);
+  const templateDirtyRef = useRef(false);
+  const originalItemIdsRef = useRef<Set<string>>(new Set());
 
   // Meal times management
   const [mealTimesDialogOpen, setMealTimesDialogOpen] = useState(false);
@@ -335,7 +339,7 @@ export default function PlanCreator() {
     let planData: any = planRes.data;
     // Precargar nombre del paciente si llega paciente_id (URL o ya vinculado)
     const pacienteId = pacienteIdParam || planData.paciente_id;
-    if (pacienteId) {
+    if (!planData.es_plantilla && pacienteId) {
       const { data: pac } = await supabase
         .from("pacientes")
         .select("id, nombre")
@@ -352,10 +356,14 @@ export default function PlanCreator() {
       }
     }
 
+    const loadedItems = itemsRes.data ?? [];
     setPlan(planData);
-    setItems(itemsRes.data ?? []);
+    setItems(loadedItems);
     setAlimentos(allAlimentos);
     setRecetas(recetasRes.data ?? []);
+    originalItemIdsRef.current = new Set(loadedItems.map((item) => item.id));
+    templateDirtyRef.current = false;
+    setTemplateDirty(false);
     setLoading(false);
   }, [id, navigate, pacienteIdParam]);
 
@@ -368,8 +376,19 @@ export default function PlanCreator() {
   }, [currentDay]);
 
   // ─── Plan updates ──────────────────────────────────────────────────────
+  const isTemplate = Boolean((plan as any)?.es_plantilla);
+  const markTemplateDirty = () => {
+    templateDirtyRef.current = true;
+    setTemplateDirty(true);
+  };
+
   const updatePlan = async (updates: Partial<PlanMenu>) => {
     if (!plan) return;
+    if (isTemplate) {
+      setPlan((current) => current ? ({ ...current, ...updates } as PlanMenu) : current);
+      markTemplateDirty();
+      return;
+    }
     const { error } = await supabase
       .from("planes_menu")
       .update(updates)
@@ -388,6 +407,80 @@ export default function PlanCreator() {
     setSaving(false);
     if (error) toast.error("Error al guardar");
     else toast.success("Plan guardado correctamente");
+  };
+
+  const saveTemplateChanges = async () => {
+    if (!plan || !isTemplate) return;
+    setSaving(true);
+
+    const { error: planError } = await supabase
+      .from("planes_menu")
+      .update({
+        nombre_paciente: plan.nombre_paciente,
+        dias: plan.dias,
+        tiempos_comida: plan.tiempos_comida,
+        pautas_extra: plan.pautas_extra,
+        generalidades: (plan as any).generalidades,
+        snacks_colaciones: (plan as any).snacks_colaciones,
+        recomendaciones: (plan as any).recomendaciones,
+        mensaje_agradecimiento: (plan as any).mensaje_agradecimiento,
+        estilo_pdf: (plan as any).estilo_pdf,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", plan.id);
+
+    if (planError) {
+      setSaving(false);
+      toast.error("Error al guardar la plantilla");
+      return;
+    }
+
+    const rows = items.map((item) => ({
+      id: item.id,
+      plan_id: plan.id,
+      dia: item.dia,
+      tiempo_comida: item.tiempo_comida,
+      tipo: item.tipo,
+      item_id: item.item_id,
+      nota_menu: item.nota_menu ?? "",
+      porcion: item.porcion ?? "",
+      incluir_detalle_pdf: item.incluir_detalle_pdf ?? true,
+      orden: item.orden,
+      nombre_override: (item as any).nombre_override ?? null,
+    }));
+
+    if (rows.length > 0) {
+      const { error: itemsError } = await supabase
+        .from("plan_items")
+        .upsert(rows, { onConflict: "id" });
+      if (itemsError) {
+        setSaving(false);
+        toast.error("No se pudieron guardar todos los alimentos de la plantilla");
+        return;
+      }
+    }
+
+    const currentIds = new Set(items.map((item) => item.id));
+    const deletedIds = [...originalItemIdsRef.current].filter((itemId) => !currentIds.has(itemId));
+    if (deletedIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("plan_items")
+        .delete()
+        .eq("plan_id", plan.id)
+        .in("id", deletedIds);
+      if (deleteError) {
+        setSaving(false);
+        toast.error("No se pudieron guardar todos los cambios de la plantilla");
+        return;
+      }
+    }
+
+    originalItemIdsRef.current = currentIds;
+    templateDirtyRef.current = false;
+    setTemplateDirty(false);
+    setSaving(false);
+    toast.success("Plantilla actualizada correctamente");
+    navigate("/");
   };
 
   const saveAsTemplate = async () => {
@@ -496,6 +589,19 @@ export default function PlanCreator() {
         : true,
     };
 
+    if (isTemplate) {
+      const localItem = {
+        ...newItem,
+        id: crypto.randomUUID(),
+        porcion: "",
+        nombre_override: null,
+        created_at: new Date().toISOString(),
+      } as PlanItem;
+      setItems((current) => [...current, localItem]);
+      markTemplateDirty();
+      return;
+    }
+
     const { data, error } = await supabase
       .from("plan_items")
       .insert(newItem)
@@ -511,11 +617,21 @@ export default function PlanCreator() {
 
   // ─── Item management ───────────────────────────────────────────────────
   const removeItem = async (itemId: string) => {
+    if (isTemplate) {
+      setItems((current) => current.filter((i) => i.id !== itemId));
+      markTemplateDirty();
+      return;
+    }
     await supabase.from("plan_items").delete().eq("id", itemId);
     setItems(items.filter((i) => i.id !== itemId));
   };
 
   const updateItem = async (itemId: string, updates: Partial<PlanItem>) => {
+    if (isTemplate) {
+      setItems((current) => current.map((i) => (i.id === itemId ? { ...i, ...updates } : i)));
+      markTemplateDirty();
+      return;
+    }
     await supabase.from("plan_items").update(updates).eq("id", itemId);
     setItems(items.map((i) => (i.id === itemId ? { ...i, ...updates } : i)));
   };
@@ -703,6 +819,18 @@ export default function PlanCreator() {
       nota_menu: "",
       incluir_detalle_pdf: false,
     };
+    if (isTemplate) {
+      const localItem = {
+        ...newItem,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+      } as PlanItem;
+      setItems((current) => [...current, localItem]);
+      markTemplateDirty();
+      setEditingNameId(localItem.id);
+      return;
+    }
+
     const { data, error } = await supabase.from("plan_items").insert(newItem).select().single();
     if (error) {
       toast.error("Error al agregar item personalizado");
@@ -740,6 +868,18 @@ export default function PlanCreator() {
       });
     }
 
+    if (isTemplate) {
+      const localItems = allNew.map((item) => ({
+        ...item,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+      })) as PlanItem[];
+      setItems((current) => [...current, ...localItems]);
+      markTemplateDirty();
+      toast.success(`Copiado a ${targets.length} destino(s)`);
+      return;
+    }
+
     const { data, error } = await supabase.from("plan_items").insert(allNew).select();
     if (error) {
       toast.error("Error al duplicar");
@@ -748,6 +888,65 @@ export default function PlanCreator() {
       toast.success(`Copiado a ${targets.length} destino(s)`);
     }
   };
+
+  const leaveMessage = "Tienes cambios sin guardar en la plantilla. ¿Quieres salir y descartarlos?";
+
+  const handleBack = () => {
+    if (isTemplate && templateDirtyRef.current && !window.confirm(leaveMessage)) return;
+    templateDirtyRef.current = false;
+    navigate("/");
+  };
+
+  useEffect(() => {
+    if (!isTemplate) return;
+    let restoringAfterCancel = false;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!templateDirtyRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const handleLinkClick = (event: MouseEvent) => {
+      if (!templateDirtyRef.current || event.defaultPrevented || event.button !== 0 ||
+          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin || url.href === window.location.href) return;
+      if (!window.confirm(leaveMessage)) {
+        event.preventDefault();
+        event.stopPropagation();
+      } else {
+        templateDirtyRef.current = false;
+      }
+    };
+
+    const handlePopState = () => {
+      if (restoringAfterCancel) {
+        restoringAfterCancel = false;
+        return;
+      }
+      if (!templateDirtyRef.current) return;
+      if (window.confirm(leaveMessage)) {
+        templateDirtyRef.current = false;
+        setTemplateDirty(false);
+      } else {
+        restoringAfterCancel = true;
+        window.history.forward();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
+    document.addEventListener("click", handleLinkClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+      document.removeEventListener("click", handleLinkClick, true);
+    };
+  }, [isTemplate, leaveMessage]);
 
   if (loading || !plan) {
     return (
@@ -769,10 +968,15 @@ export default function PlanCreator() {
       <div className="space-y-4">
         {/* ─── Top bar ───────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-sage/40 px-4 py-3 border border-sage">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="sm" onClick={handleBack}>
             <ArrowLeft className="mr-1 h-4 w-4" />
             Volver
           </Button>
+          {isTemplate && (
+            <Badge variant="secondary" className="shrink-0">
+              {templateDirty ? "Cambios sin guardar" : "Editando plantilla"}
+            </Badge>
+          )}
           <DebouncedInput
             value={plan.nombre_paciente}
             onChange={(v) => updatePlan({ nombre_paciente: v })}
@@ -834,26 +1038,53 @@ export default function PlanCreator() {
             </DialogContent>
           </Dialog>
 
+          {isTemplate && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <StickyNote className="h-4 w-4" />
+                  Pautas
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Pautas extra</DialogTitle>
+                </DialogHeader>
+                <Textarea
+                  value={plan.pautas_extra ?? ""}
+                  onChange={(event) => updatePlan({ pautas_extra: event.target.value })}
+                  placeholder="Escribe las pautas extra de la plantilla..."
+                  rows={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Los cambios se guardarán al pulsar «Guardar plantilla».
+                </p>
+              </DialogContent>
+            </Dialog>
+          )}
+
           <div className="ml-auto flex gap-2">
             <Button
-              variant="outline"
+              variant={isTemplate ? "default" : "outline"}
               size="sm"
               className="gap-1"
-              onClick={savePlan}
+              onClick={isTemplate ? saveTemplateChanges : savePlan}
               disabled={saving}
             >
               <Save className="h-4 w-4" />
-              {saving ? "Guardando..." : "Guardar"}
+              {saving ? "Guardando..." : isTemplate ? "Guardar plantilla" : "Guardar"}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={saveAsTemplate}
-            >
-              <BookmarkPlus className="h-4 w-4" />
-              Plantilla
-            </Button>
+            {!isTemplate && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={saveAsTemplate}
+              >
+                <BookmarkPlus className="h-4 w-4" />
+                Plantilla
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

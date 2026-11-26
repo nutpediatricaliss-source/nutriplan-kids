@@ -418,12 +418,20 @@ export default function Dashboard() {
           {isTemplate && <BookmarkCheck className="h-4 w-4 text-lavender-foreground shrink-0" />}
         </div>
       </CardHeader>
-      <CardContent className="flex items-center gap-2">
+      <CardContent className="flex flex-wrap items-center gap-2">
         {isTemplate ? (
-          <Button size="sm" className="flex-1 gap-1" onClick={() => createFromTemplate(plan)}>
-            <FileSymlink className="h-3.5 w-3.5" />
-            Usar Plantilla
-          </Button>
+          <>
+            <Button size="sm" className="flex-1 gap-1" onClick={() => createFromTemplate(plan)}>
+              <FileSymlink className="h-3.5 w-3.5" />
+              Usar Plantilla
+            </Button>
+            <Button asChild variant="outline" size="sm" className="gap-1">
+              <Link to={`/plan/${plan.id}`}>
+                <Pencil className="h-3.5 w-3.5" />
+                Editar
+              </Link>
+            </Button>
+          </>
         ) : (
           <Button asChild variant="default" size="sm" className="flex-1">
             <Link to={`/plan/${plan.id}`}>
