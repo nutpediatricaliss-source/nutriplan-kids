@@ -278,49 +278,80 @@ export default function Dashboard() {
     const rawItems: any[] = Array.isArray(payload.items) ? payload.items : [];
 
     if (rawItems.length > 0) {
-      // Build a name -> id map for alimentos and recetas of this user (or shared alimentos)
-      const [{ data: alimentos }, { data: recetas }] = await Promise.all([
-        supabase.from("alimentos_smae").select("id,nombre"),
-        supabase.from("recetas").select("id,nombre").eq("user_id", user.id),
-      ]);
-      const aMap = new Map<string, string>();
-      (alimentos ?? []).forEach((a: any) => aMap.set(a.nombre.trim().toLowerCase(), a.id));
-      const rMap = new Map<string, string>();
-      (recetas ?? []).forEach((r: any) => rMap.set(r.nombre.trim().toLowerCase(), r.id));
+      const norm = (s: string) =>
+        String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      const chunk = <T,>(arr: T[], n: number) => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+        return out;
+      };
+      const tablaDe = (tipo: string) => (tipo === "alimento" ? "alimentos_smae" : "recetas");
 
-      let convertidos = 0;
+      // 1) Buscar por item_id solo los ids del archivo
+      const idsPorTipo: Record<string, Set<string>> = { alimento: new Set(), receta: new Set() };
+      rawItems.forEach((it) => {
+        if ((it.tipo === "alimento" || it.tipo === "receta") && it.item_id) idsPorTipo[it.tipo].add(String(it.item_id));
+      });
+      const validos: Record<string, Set<string>> = { alimento: new Set(), receta: new Set() };
+      for (const tipo of ["alimento", "receta"]) {
+        for (const ids of chunk([...idsPorTipo[tipo]], 150)) {
+          const { data } = await supabase.from(tablaDe(tipo) as any).select("id").in("id", ids);
+          (data ?? []).forEach((x: any) => validos[tipo].add(x.id));
+        }
+      }
+
+      // 2) Buscar por nombre en la base (sin mayúsculas ni tildes) los que no se encontraron por id
+      const nombresPendientes: Record<string, Set<string>> = { alimento: new Set(), receta: new Set() };
+      rawItems.forEach((it) => {
+        if ((it.tipo === "alimento" || it.tipo === "receta") && !(it.item_id && validos[it.tipo].has(String(it.item_id))) && it.nombre_override) {
+          nombresPendientes[it.tipo].add(String(it.nombre_override).trim());
+        }
+      });
+      const porNombre: Record<string, Map<string, string>> = { alimento: new Map(), receta: new Map() };
+      for (const tipo of ["alimento", "receta"]) {
+        const nombres = [...nombresPendientes[tipo]];
+        for (const grupo of chunk(nombres, 10)) {
+          await Promise.all(
+            grupo.map(async (nombre) => {
+              // Comodín "_" en cada letra que pueda llevar tilde; luego se compara normalizado
+              const pattern = nombre
+                .replace(/[\\%_]/g, (c) => "\\" + c)
+                .replace(/[aeiouncAEIOUNCáéíóúüñÁÉÍÓÚÜÑ]/g, "_");
+              let q = supabase.from(tablaDe(tipo) as any).select("id,nombre").ilike("nombre", pattern).limit(50);
+              if (tipo === "receta") q = q.eq("user_id", user.id);
+              const { data } = await q;
+              const hit = (data ?? []).find((x: any) => norm(x.nombre) === norm(nombre));
+              if (hit) porNombre[tipo].set(norm(nombre), (hit as any).id);
+            })
+          );
+        }
+      }
+
+      // 3) Armar ítems; solo sin coincidencia -> personalizado
+      let enlazados = 0;
+      const personalizados: string[] = [];
       const itemsToInsert = rawItems.map((it) => {
-        const tipo = it.tipo;
+        let tipo = it.tipo;
         let item_id = it.item_id;
-        let nuevoTipo = tipo;
         let nombre_override = it.nombre_override ?? null;
 
-        if (tipo === "alimento") {
-          const found = nombre_override
-            ? aMap.get(String(nombre_override).trim().toLowerCase())
-            : undefined;
-          if (!found) {
-            // Si no se encuentra, convertir a personalizado para no romper FK lógica
-            nuevoTipo = "personalizado";
-            item_id = crypto.randomUUID();
-            nombre_override = nombre_override || "Alimento";
-            convertidos++;
+        if (tipo === "alimento" || tipo === "receta") {
+          if (item_id && validos[tipo].has(String(item_id))) {
+            enlazados++;
           } else {
-            item_id = found;
+            const found = nombre_override ? porNombre[tipo].get(norm(nombre_override)) : undefined;
+            if (found) {
+              item_id = found;
+              enlazados++;
+            } else {
+              nombre_override = nombre_override || (tipo === "alimento" ? "Alimento" : "Receta");
+              personalizados.push(nombre_override);
+              tipo = "personalizado";
+              item_id = crypto.randomUUID();
+            }
           }
-        } else if (tipo === "receta") {
-          const found = nombre_override
-            ? rMap.get(String(nombre_override).trim().toLowerCase())
-            : undefined;
-          if (!found) {
-            nuevoTipo = "personalizado";
-            item_id = crypto.randomUUID();
-            nombre_override = nombre_override || "Receta";
-            convertidos++;
-          } else {
-            item_id = found;
-          }
-        } else if (tipo === "personalizado") {
+        } else {
+          tipo = "personalizado";
           item_id = crypto.randomUUID();
         }
 
@@ -328,7 +359,7 @@ export default function Dashboard() {
           plan_id: newTemplate.id,
           dia: it.dia ?? 1,
           tiempo_comida: it.tiempo_comida ?? "Desayuno",
-          tipo: nuevoTipo,
+          tipo,
           item_id,
           porcion: it.porcion ?? "",
           nota_menu: it.nota_menu ?? "",
@@ -337,33 +368,6 @@ export default function Dashboard() {
           incluir_detalle_pdf: it.incluir_detalle_pdf ?? true,
         };
       });
-
-      // For alimento items we need a name-based lookup; but original items only stored item_id (not name).
-      // Re-map: if original item_id exists in current alimentos table by id, keep it.
-      const ids = itemsToInsert
-        .filter((i) => i.tipo === "alimento" || i.tipo === "receta")
-        .map((i) => i.item_id);
-      if (ids.length > 0) {
-        const [{ data: aById }, { data: rById }] = await Promise.all([
-          supabase.from("alimentos_smae").select("id").in("id", ids),
-          supabase.from("recetas").select("id").in("id", ids),
-        ]);
-        const validA = new Set((aById ?? []).map((x: any) => x.id));
-        const validR = new Set((rById ?? []).map((x: any) => x.id));
-        for (const it of itemsToInsert) {
-          if (it.tipo === "alimento" && !validA.has(it.item_id)) {
-            it.tipo = "personalizado";
-            it.nombre_override = it.nombre_override || "Alimento";
-            it.item_id = crypto.randomUUID();
-            convertidos++;
-          } else if (it.tipo === "receta" && !validR.has(it.item_id)) {
-            it.tipo = "personalizado";
-            it.nombre_override = it.nombre_override || "Receta";
-            it.item_id = crypto.randomUUID();
-            convertidos++;
-          }
-        }
-      }
 
       const { error: itemsErr } = await supabase
         .from("plan_items")
@@ -376,11 +380,15 @@ export default function Dashboard() {
         return;
       }
 
-      toast.success(
-        convertidos > 0
-          ? `Plantilla importada (${itemsToInsert.length} items, ${convertidos} convertidos a personalizado)`
-          : `Plantilla importada (${itemsToInsert.length} items)`
-      );
+      const unicos = [...new Set(personalizados)];
+      toast.success(`Plantilla importada: ${itemsToInsert.length} ítems`, {
+        description:
+          `${enlazados} enlazados al catálogo/recetas. ` +
+          (unicos.length
+            ? `${personalizados.length} quedaron como personalizados: ${unicos.slice(0, 15).join(", ")}${unicos.length > 15 ? ` y ${unicos.length - 15} más` : ""}.`
+            : "Ninguno quedó como personalizado."),
+        duration: 15000,
+      });
     } else {
       toast.success("Plantilla importada (sin items)");
     }
