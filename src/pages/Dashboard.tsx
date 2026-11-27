@@ -400,7 +400,7 @@ export default function Dashboard() {
   };
 
   const PlanCard = ({ plan, isTemplate = false }: { plan: PlanMenu; isTemplate?: boolean }) => (
-    <Card className={`group rounded-2xl transition-all hover:shadow-lg ${isTemplate ? "border-lavender bg-lavender/20" : "shadow-sm"}`}>
+    <Card tone={isTemplate ? "lavender" : "sage"} className="group rounded-2xl transition-all hover:shadow-lg">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">

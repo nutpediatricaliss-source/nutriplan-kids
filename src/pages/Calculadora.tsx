@@ -169,7 +169,7 @@ export default function Calculadora() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Datos del paciente */}
-        <Card className="rounded-2xl">
+        <Card tone="sky" className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Datos del paciente</CardTitle>
           </CardHeader>
@@ -246,7 +246,7 @@ export default function Calculadora() {
         </Card>
 
         {/* Resultado energético */}
-        <Card className="rounded-2xl lg:col-span-2 bg-gradient-to-br from-primary/5 to-accent/30">
+        <Card tone="peach" className="rounded-2xl lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Flame className="h-4 w-4 text-primary" /> Requerimiento energético
@@ -277,7 +277,7 @@ export default function Calculadora() {
       </div>
 
       {/* Macronutrientes */}
-      <Card className="rounded-2xl">
+      <Card tone="lavender" className="rounded-2xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4 text-primary" /> Distribución de macronutrientes
@@ -292,7 +292,7 @@ export default function Calculadora() {
 
           <MacroSlider
             label="Hidratos de carbono"
-            color="bg-[hsl(var(--peach))]"
+            color="bg-peach"
             pct={pctHco}
             onChange={(v) => setPctHco(Math.min(v, 100 - pctProt))}
             kcal={macros.hco.kcal}
@@ -301,7 +301,7 @@ export default function Calculadora() {
           />
           <MacroSlider
             label="Proteínas"
-            color="bg-[hsl(var(--sage))]"
+            color="bg-sage"
             pct={pctProt}
             onChange={(v) => setPctProt(Math.min(v, 100 - pctHco))}
             kcal={macros.prot.kcal}
@@ -310,7 +310,7 @@ export default function Calculadora() {
           />
           <MacroSlider
             label="Grasas (automático)"
-            color="bg-[hsl(var(--lavender))]"
+            color="bg-lavender"
             pct={pctGra}
             disabled
             kcal={macros.gra.kcal}
@@ -321,7 +321,7 @@ export default function Calculadora() {
       </Card>
 
       {/* Intercambios */}
-      <Card className="rounded-2xl">
+      <Card tone="sage" className="rounded-2xl">
         <CardHeader>
           <CardTitle className="text-base">Equivalentes / intercambios sugeridos</CardTitle>
           <p className="text-xs text-muted-foreground">

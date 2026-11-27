@@ -86,14 +86,14 @@ export default function PatientAppointments({ patientId, patientName, appointmen
   };
   const renderAppointment = (appointment: Appointment) => (
     <article key={appointment.id} data-appointment-id={appointment.id} aria-label={appointmentLabel(appointment)}
-      className="flex w-40 max-w-full flex-col gap-1.5 rounded-xl border bg-muted/30 p-2.5">
+      className="flex w-40 max-w-full flex-col gap-1.5 rounded-xl border border-lavender-border bg-lavender/40 p-2.5">
       <div title={appointmentLabel(appointment)}>
         <p className="text-xl font-semibold text-primary">{new Date(`${appointment.fecha}T12:00:00`).toLocaleDateString("es", { day: "numeric", month: "short" })}</p>
         {appointment.hora && <p className="text-sm font-medium tabular-nums">{appointment.hora.slice(0, 5)}</p>}
       </div>
       <p className="text-xs font-medium">{appointmentTypes[appointment.tipo as keyof typeof appointmentTypes]}</p>
       {appointment.lugar && <p className="break-words text-xs text-muted-foreground">{appointment.lugar}</p>}
-      <Badge variant="secondary" className="w-fit max-w-full whitespace-normal rounded-lg text-xs font-normal">{appointmentStates[appointment.estado as keyof typeof appointmentStates]}</Badge>
+      <Badge variant={appointment.estado === "realizada" ? "sage" : appointment.estado === "programada" ? "lavender" : "peach"} className="w-fit max-w-full whitespace-normal rounded-lg text-xs font-normal">{appointmentStates[appointment.estado as keyof typeof appointmentStates]}</Badge>
       {appointment.nota && <p className="whitespace-pre-wrap break-words text-xs">{appointment.nota}</p>}
       <div className="mt-auto flex items-center gap-1 pt-1">
         <DropdownMenu>
@@ -115,7 +115,7 @@ export default function PatientAppointments({ patientId, patientName, appointmen
   );
 
   return <>
-    {!formOnly && <Card className="rounded-2xl">
+    {!formOnly && <Card tone="lavender" className="rounded-2xl">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3">
         <CardTitle className="text-base">Citas</CardTitle>
         <Button size="sm" onClick={() => { setEditing(null); onDialogChange(true); }} className="h-8 rounded-xl"><CalendarPlus className="mr-1.5 h-3.5 w-3.5" />Agendar cita</Button>

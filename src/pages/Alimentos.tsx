@@ -231,9 +231,9 @@ export default function Alimentos() {
           </CardContent>
         </Card>
       ) : (
-        <div className="overflow-auto rounded-lg border">
+        <div className="overflow-auto rounded-lg border border-sage-border bg-card">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-sage">
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Grupo</TableHead>
@@ -251,7 +251,7 @@ export default function Alimentos() {
                 <TableRow key={a.id}>
                   <TableCell className="font-medium">{a.nombre}</TableCell>
                   <TableCell>
-                    <span className="rounded-full bg-accent px-2 py-0.5 text-xs">{a.grupo}</span>
+                    <span className="rounded-full bg-sage px-2 py-0.5 text-xs text-sage-foreground">{a.grupo}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{a.porcion}</TableCell>
                   <TableCell className="text-right tabular-nums">{a.calorias}</TableCell>

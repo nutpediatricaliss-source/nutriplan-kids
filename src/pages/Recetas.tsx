@@ -552,7 +552,7 @@ export default function Recetas() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((r) => (
-            <Card key={r.id} className="group overflow-hidden transition-shadow hover:shadow-md">
+            <Card key={r.id} tone="peach" className="group overflow-hidden transition-shadow hover:shadow-md">
               {r.imagen_url && (
                 <div className="aspect-video overflow-hidden bg-muted">
                   <img

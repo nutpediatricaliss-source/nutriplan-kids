@@ -1322,15 +1322,15 @@ export default function PlanCreator() {
             <p className="text-xs font-semibold text-muted-foreground">
               Día {currentDay} — Semana {Math.ceil(currentDay / 7)}
             </p>
-            {tiemposComida.map((tiempo) => {
+            {tiemposComida.map((tiempo, index) => {
               const dayItems = items.filter(
                 (i) => i.dia === currentDay && i.tiempo_comida === tiempo
               );
               return (
-                <Card key={tiempo} className="border-peach/60 bg-peach/20">
+                <Card key={tiempo} tone={(["peach", "lavender", "sage", "sky"] as const)[index % 4]} className="rounded-2xl">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold text-peach-foreground">{tiempo}</CardTitle>
+                      <CardTitle className="text-sm font-semibold">{tiempo}</CardTitle>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => addCustomItem(tiempo)}

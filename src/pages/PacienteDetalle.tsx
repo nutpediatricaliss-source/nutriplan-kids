@@ -306,7 +306,7 @@ export default function PacienteDetalle() {
       <div>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{paciente.nombre}</h1>
-          {nextAppointment && <Badge variant="secondary" className="gap-1 rounded-lg font-normal"><CalendarDays className="h-3.5 w-3.5" />Próxima cita: {appointmentLabel(nextAppointment)}</Badge>}
+          {nextAppointment && <Badge variant="lavender" className="gap-1 rounded-lg font-normal"><CalendarDays className="h-3.5 w-3.5" />Próxima cita: {appointmentLabel(nextAppointment)}</Badge>}
         </div>
         <p className="text-sm text-muted-foreground">
           {edadLegible(paciente.fecha_nacimiento)} ·{" "}
@@ -318,7 +318,7 @@ export default function PacienteDetalle() {
       <PatientHistoryCards key={paciente.id} patient={paciente}
         onSaved={(patch) => setPaciente((current) => current ? { ...current, ...patch } : current)}
         generalCard={
-      <Card className="rounded-2xl">
+      <Card tone="sky" className="rounded-2xl">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3">
           <CardTitle className="text-base">Datos generales</CardTitle>
           <Button onClick={guardarPaciente} disabled={savingPaciente} size="sm" className="h-8 rounded-xl"><Save className="mr-1.5 h-3.5 w-3.5" />Guardar cambios</Button>
@@ -390,7 +390,7 @@ export default function PacienteDetalle() {
         appointments={appointmentsQuery.data ?? []} loading={appointmentsQuery.isLoading} error={appointmentsQuery.isError}
         dialogOpen={appointmentOpen} onDialogChange={setAppointmentOpen} onChanged={() => { void appointmentsQuery.refetch(); }} />
 
-      <Card className="rounded-2xl">
+      <Card tone="sage" className="rounded-2xl">
         <CardHeader>
           <CardTitle className="text-lg">Historial de consultas</CardTitle>
         </CardHeader>
@@ -407,7 +407,7 @@ export default function PacienteDetalle() {
                   onClick={() => abrirEditar(c)}
                   role="button"
                   title="Editar consulta"
-                  className="cursor-pointer transition-colors hover:bg-muted/60 flex flex-wrap items-start justify-between gap-3 rounded-2xl border bg-muted/30 p-4"
+                  className="cursor-pointer transition-colors hover:bg-sage/60 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-sage-border bg-sage/30 p-4"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 text-sm font-semibold">
@@ -576,21 +576,21 @@ export default function PacienteDetalle() {
             <div className="space-y-4">
               <MacroSlider
                 label="Carbohidratos"
-                color="bg-amber-500"
+                color="bg-peach"
                 pct={pctHco}
                 onChange={(v) => setPctHco(Math.min(v, 100 - pctProt))}
                 {...macros.hco}
               />
               <MacroSlider
                 label="Proteínas"
-                color="bg-rose-500"
+                color="bg-sage"
                 pct={pctProt}
                 onChange={(v) => setPctProt(Math.min(v, 100 - pctHco))}
                 {...macros.prot}
               />
               <MacroSlider
                 label="Grasas (automático)"
-                color="bg-sky-500"
+                color="bg-lavender"
                 pct={pctGra}
                 disabled
                 {...macros.gra}

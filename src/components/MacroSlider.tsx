@@ -21,7 +21,7 @@ export default function MacroSlider({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 rounded-xl border p-3 ${color === "bg-peach" ? "border-peach-border bg-peach/40" : color === "bg-sage" ? "border-sage-border bg-sage/40" : "border-lavender-border bg-lavender/40"}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`h-3 w-3 rounded-full ${color}`} />
@@ -38,15 +38,15 @@ export default function MacroSlider({
         onValueChange={(v) => onChange?.(v[0])}
       />
       <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
+        <div className="rounded-lg bg-card/80 px-3 py-2">
           <p className="text-muted-foreground">kcal</p>
           <p className="font-semibold tabular-nums">{kcal}</p>
         </div>
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
+        <div className="rounded-lg bg-card/80 px-3 py-2">
           <p className="text-muted-foreground">gramos</p>
           <p className="font-semibold tabular-nums">{g}</p>
         </div>
-        <div className="rounded-lg bg-muted/60 px-3 py-2">
+        <div className="rounded-lg bg-card/80 px-3 py-2">
           <p className="text-muted-foreground">g/kg/día</p>
           <p className="font-semibold tabular-nums">{gxkg}</p>
         </div>

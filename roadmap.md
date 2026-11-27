@@ -26,3 +26,8 @@
 - [x] Preserve food preferences as free text and stop suggesting preference tags.
 - [x] Compact independent general/contact/history cards and appointment tiles without altering consultations or Dashboard.
 - [x] Verify preserved data, independent saves, appointment actions and desktop/mobile layout; commit.
+
+# Functional pastel palette
+- [x] Define themed pastel tokens and reusable section/tag variants while retaining the primary color.
+- [x] Apply section, appointment and nutrition accents throughout the interface without changing data or PDF generation.
+- [x] Verify signed-in desktop/mobile screens, light/dark section contrast and existing behavior; commit.

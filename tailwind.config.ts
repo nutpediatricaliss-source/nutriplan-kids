@@ -57,17 +57,27 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        sky: {
+          DEFAULT: "hsl(var(--sky))",
+          foreground: "hsl(var(--sky-foreground))",
+          border: "hsl(var(--sky-border))",
+        },
+        success: { DEFAULT: "hsl(var(--success))", foreground: "hsl(var(--success-foreground))" },
+        warning: { DEFAULT: "hsl(var(--warning))", foreground: "hsl(var(--warning-foreground))" },
         peach: {
           DEFAULT: "hsl(var(--peach))",
           foreground: "hsl(var(--peach-foreground))",
+          border: "hsl(var(--peach-border))",
         },
         sage: {
           DEFAULT: "hsl(var(--sage))",
           foreground: "hsl(var(--sage-foreground))",
+          border: "hsl(var(--sage-border))",
         },
         lavender: {
           DEFAULT: "hsl(var(--lavender))",
           foreground: "hsl(var(--lavender-foreground))",
+          border: "hsl(var(--lavender-border))",
         },
       },
       borderRadius: {

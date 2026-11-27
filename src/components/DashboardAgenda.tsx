@@ -17,8 +17,9 @@ import { cn } from "@/lib/utils";
 
 const eventStyle = (event: AgendaEvent) => {
   if (event.state === "cancelada") return "bg-muted text-muted-foreground line-through opacity-60";
-  if (event.kind === "consultation" || event.state !== "programada") return "bg-muted text-muted-foreground";
-  return ({ consulta_inicial: "bg-primary text-primary-foreground", seguimiento: "bg-primary/15 text-primary", control: "bg-secondary text-secondary-foreground", otra: "bg-accent text-accent-foreground" } as Record<string, string>)[event.type] ?? "bg-primary/15 text-primary";
+  if (event.kind === "consultation" || event.state === "realizada") return "bg-sage text-sage-foreground";
+  if (event.state === "no_asistio") return "bg-peach text-peach-foreground";
+  return ({ consulta_inicial: "bg-sky text-sky-foreground", seguimiento: "bg-lavender text-lavender-foreground", control: "bg-sage text-sage-foreground", otra: "bg-peach text-peach-foreground" } as Record<string, string>)[event.type] ?? "bg-primary/15 text-primary";
 };
 const eventType = (event: AgendaEvent) => event.kind === "consultation" ? "Consulta realizada" : appointmentTypes[event.type as keyof typeof appointmentTypes];
 
@@ -72,7 +73,7 @@ export default function DashboardAgenda() {
           {query.isLoading && <p className="mb-2 text-sm text-muted-foreground">Cargando agenda…</p>}
           <div className="overflow-x-auto rounded-2xl border bg-card">
             <div className={cn(mode === "week" && "min-w-[700px]")}>
-              <div className="grid grid-cols-7 border-b bg-secondary/60">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => <div key={day} className="py-2 text-center text-xs font-semibold text-muted-foreground">{day}</div>)}</div>
+              <div className="grid grid-cols-7 border-b bg-sky/60">{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => <div key={day} className="py-2 text-center text-xs font-semibold text-muted-foreground">{day}</div>)}</div>
               <div className="grid grid-cols-7">
                 {days.map((day) => {
                   const rows = events.filter((event) => event.date === day);
@@ -91,11 +92,11 @@ export default function DashboardAgenda() {
           </div>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
             {Object.entries(appointmentTypes).map(([type, label]) => <span key={type} className="flex items-center gap-1.5"><span className={cn("h-2.5 w-2.5 rounded-full", eventStyle({ state: "programada", type, kind: "appointment" } as AgendaEvent))} />{label}</span>)}
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/50" />Consultas realizadas</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-sage-foreground/60" />Consultas realizadas</span>
           </div>
         </div>
         <aside className="min-w-0 lg:pt-11">
-          <Card className="rounded-2xl"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="h-4 w-4 text-primary" />Hoy y próximos 7 días</CardTitle></CardHeader>
+          <Card tone="lavender" className="rounded-2xl"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CalendarDays className="h-4 w-4 text-primary" />Hoy y próximos 7 días</CardTitle></CardHeader>
             <CardContent className="space-y-1">
               {upcoming.length ? upcoming.map((event) => <Button key={event.id} asChild variant="ghost" className="h-auto w-full justify-start whitespace-normal px-0 py-3 text-left font-normal">
                 <Link to={`/pacientes/${event.patientId}`}><span className="block min-w-0 space-y-1"><span className="block text-xs text-primary">{formatAgendaDay(event.date, { weekday: "short", day: "numeric", month: "short" })} · {event.time?.slice(0, 5) ?? "Sin hora"}</span><span className="block break-words font-medium">{event.name}</span><span className="block break-words text-xs text-muted-foreground">{eventType(event)}{event.place ? ` · ${event.place}` : ""}</span></span></Link>
