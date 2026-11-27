@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Target, Pencil } from "lucide-react";
 import { Macros4, progressTone } from "@/lib/goalProgress";
 
-const toneBar = { bajo: "bg-muted-foreground/40", ok: "bg-success", alto: "bg-warning" };
-const toneText = { bajo: "text-muted-foreground", ok: "text-success", alto: "text-warning" };
+const toneBar = { bajo: "bg-muted-foreground/40", ok: "bg-green-600", alto: "bg-orange-500" };
+const toneText = { bajo: "text-muted-foreground", ok: "text-green-700", alto: "text-orange-600" };
 
 function fmt(n: number, int = false) {
   return int ? String(Math.round(n)) : n.toFixed(1).replace(/\.0$/, "");

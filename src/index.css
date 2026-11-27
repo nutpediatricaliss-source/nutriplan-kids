@@ -20,14 +20,14 @@ All colors MUST be HSL.
     --primary: 37 50% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 38% 95%;
-    --secondary-foreground: 210 28% 32%;
+    --secondary: 40 30% 94%;
+    --secondary-foreground: 37 50% 30%;
 
     --muted: 40 20% 95%;
     --muted-foreground: 30 10% 46%;
 
-    --accent: 153 25% 93%;
-    --accent-foreground: 153 28% 30%;
+    --accent: 40 40% 92%;
+    --accent-foreground: 37 50% 30%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
@@ -51,23 +51,12 @@ All colors MUST be HSL.
     --sidebar-border: 37 20% 90%;
     --sidebar-ring: 37 50% 48%;
 
-    --peach: 22 78% 93%;
-    --peach-foreground: 18 42% 34%;
-    --sage: 150 30% 92%;
-    --sage-foreground: 153 32% 29%;
-    --lavender: 275 38% 94%;
-    --lavender-foreground: 275 26% 36%;
-
-    --peach-border: 22 55% 82%;
-    --sage-border: 150 25% 78%;
-    --lavender-border: 275 30% 83%;
-    --sky: 205 58% 93%;
-    --sky-foreground: 205 43% 31%;
-    --sky-border: 205 40% 80%;
-    --success: 153 42% 36%;
-    --success-foreground: 153 45% 97%;
-    --warning: 27 75% 43%;
-    --warning-foreground: 27 60% 98%;
+    --peach: 28 93% 90%;
+    --peach-foreground: 28 60% 30%;
+    --sage: 120 25% 92%;
+    --sage-foreground: 120 20% 30%;
+    --lavender: 270 40% 94%;
+    --lavender-foreground: 270 30% 35%;
 
     --gold-light: 40 70% 90%;
     --gold: 37 60% 72%;
@@ -123,17 +112,6 @@ All colors MUST be HSL.
     --lavender: 270 20% 25%;
     --lavender-foreground: 270 40% 90%;
 
-    --peach-border: 22 30% 39%;
-    --sage-border: 150 25% 35%;
-    --lavender-border: 275 25% 40%;
-    --sky: 205 30% 21%;
-    --sky-foreground: 205 55% 85%;
-    --sky-border: 205 28% 38%;
-    --success: 153 42% 62%;
-    --success-foreground: 153 30% 12%;
-    --warning: 27 75% 65%;
-    --warning-foreground: 27 30% 12%;
-
     --gold-light: 40 30% 25%;
     --gold: 37 50% 50%;
     --gold-dark: 37 40% 65%;
@@ -141,15 +119,6 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  .tone-card > .card-header {
-    background-color: hsl(var(--section-background));
-    border-radius: calc(var(--radius) + 4px) calc(var(--radius) + 4px) 0 0;
-    margin-bottom: 0.75rem;
-  }
-  .tone-card > .card-header .card-title {
-    color: hsl(var(--section-foreground));
-  }
-
   .allergy-badge {
     background-color: hsl(var(--allergy));
     color: hsl(var(--allergy-foreground));

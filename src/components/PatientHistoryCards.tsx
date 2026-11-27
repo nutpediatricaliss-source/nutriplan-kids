@@ -76,7 +76,7 @@ export default function PatientHistoryCards({ patient, onSaved, generalCard }: {
   return <>
     <div className="grid items-start gap-3 lg:grid-cols-2">
     {generalCard}
-    <Card tone="sky" className="rounded-2xl">
+    <Card className="rounded-2xl">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3"><CardTitle className="text-base">Contacto y facturación</CardTitle>
         <Button form="patient-contact-form" type="submit" size="sm" disabled={savingContact} className="h-8 rounded-xl"><Save className="mr-1.5 h-3.5 w-3.5" />Guardar cambios</Button>
       </CardHeader>
@@ -99,9 +99,9 @@ export default function PatientHistoryCards({ patient, onSaved, generalCard }: {
                   aria-describedby={field === "contacto_correo" && emailError ? "contact-email-error" : undefined}
                   onChange={(event) => { setContact({ ...contact, [field]: event.target.value }); if (field === "contacto_correo") setEmailError(false); }} />
                 {field === "contacto_celular" && <Tooltip><TooltipTrigger asChild>
-                  {whatsapp ? <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-xl border-sage-border bg-sage text-sage-foreground hover:bg-sage/80">
+                  {whatsapp ? <Button asChild variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-xl">
                     <a href={whatsapp} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp"><MessageCircle className="h-4 w-4" /></a>
-                  </Button> : <Button type="button" disabled variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-xl border-sage-border bg-sage text-sage-foreground hover:bg-sage/80" aria-label="Abrir WhatsApp"><MessageCircle className="h-4 w-4" /></Button>}
+                  </Button> : <Button type="button" disabled variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-xl" aria-label="Abrir WhatsApp"><MessageCircle className="h-4 w-4" /></Button>}
                 </TooltipTrigger><TooltipContent>Abrir WhatsApp</TooltipContent></Tooltip>}
               </div>
               {field === "contacto_correo" && emailError && <p id="contact-email-error" role="alert" className="text-sm text-destructive">Ingresa un correo electrónico válido.</p>}
@@ -114,7 +114,7 @@ export default function PatientHistoryCards({ patient, onSaved, generalCard }: {
       </CardContent>
     </Card>
     </div>
-    <Card tone="peach" className="rounded-2xl">
+    <Card className="rounded-2xl">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3"><CardTitle className="text-base">Historia clínica</CardTitle>
         <Button form="patient-history-form" type="submit" size="sm" disabled={savingHistory} className="h-8 rounded-xl"><Save className="mr-1.5 h-3.5 w-3.5" />Guardar cambios</Button>
       </CardHeader>

@@ -31,7 +31,7 @@ export default function Auth() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card tone="sage" className="w-full max-w-sm rounded-2xl">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">NutriPlan Pediátrico</CardTitle>
           <CardDescription>

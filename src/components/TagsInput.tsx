@@ -30,7 +30,7 @@ export default function TagsInput({ value, onChange, suggestions, id, label = "D
       }
     }}>
       {value.length > 0 && <div className="flex flex-wrap gap-1.5">
-        {value.map((tag) => <Badge key={normalizeTag(tag)} variant={label === "Alergias" || label === "Intolerancias" ? "peach" : "lavender"} className="max-w-full gap-1 rounded-lg font-normal">
+        {value.map((tag) => <Badge key={normalizeTag(tag)} variant="secondary" className="max-w-full gap-1 rounded-lg font-normal">
           <span className="break-words min-w-0">{tag}</span>
           <Button type="button" variant="ghost" size="icon" className="h-5 w-5 shrink-0" aria-label={`Quitar ${tag}`} title={`Quitar ${tag}`}
             onClick={() => onChange(value.filter((item) => normalizeTag(item) !== normalizeTag(tag)))}>

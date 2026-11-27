@@ -14,7 +14,7 @@ export default function DietaryRecall({ value, onChange }: { value: string; onCh
     element.style.height = `${element.scrollHeight + element.offsetHeight - element.clientHeight}px`;
   }, [value]);
 
-  return <div className="space-y-2 rounded-xl border border-sage-border bg-sage/40 p-3">
+  return <div className="space-y-2">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <Label htmlFor="recordatorio-24h">Recordatorio de 24 h</Label>
       <Button type="button" variant="outline" size="sm" className="rounded-xl"

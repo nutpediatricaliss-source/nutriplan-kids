@@ -156,8 +156,7 @@ export default function Pacientes() {
             <Card
               key={p.id}
               onClick={() => navigate(`/pacientes/${p.id}`)}
-              tone="sky"
-              className="cursor-pointer rounded-2xl border-l-4 transition-shadow hover:shadow-md hover:bg-sky/20"
+              className="cursor-pointer rounded-2xl transition-shadow hover:shadow-md"
             >
               <CardContent className="flex items-center justify-between gap-3 p-5">
                 <div className="min-w-0">
@@ -168,13 +167,13 @@ export default function Pacientes() {
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {p.diagnosticos.map((tag) => (
-                      <Badge key={tag} variant="lavender" className="max-w-full break-words rounded-lg text-xs font-normal">
+                      <Badge key={tag} variant="secondary" className="max-w-full break-words rounded-lg text-xs font-normal">
                         {tag}
                       </Badge>
                     ))}
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 shrink-0 text-sky-foreground" />
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
               </CardContent>
             </Card>
           ))}
