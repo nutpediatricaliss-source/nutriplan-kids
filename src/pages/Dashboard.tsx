@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { PlanMenu } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import DashboardAgenda from "@/components/DashboardAgenda";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Calendar, Trash2, Copy, Pencil, BookmarkCheck, FileSymlink, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -397,14 +399,6 @@ export default function Dashboard() {
     fetchPlanes();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   const PlanCard = ({ plan, isTemplate = false }: { plan: PlanMenu; isTemplate?: boolean }) => (
     <Card className={`group rounded-2xl transition-all hover:shadow-lg ${isTemplate ? "border-lavender bg-lavender/20" : "shadow-sm"}`}>
       <CardHeader className="pb-3">
@@ -474,7 +468,11 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-10">
+    <Tabs defaultValue="agenda" className="space-y-5">
+      <TabsList className="rounded-xl"><TabsTrigger value="agenda">Agenda</TabsTrigger><TabsTrigger value="menus">Menús y plantillas</TabsTrigger></TabsList>
+      <TabsContent value="agenda"><DashboardAgenda /></TabsContent>
+      <TabsContent value="menus">
+      {loading ? <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div> : <div className="space-y-10">
       {/* Plans Section */}
       <div className="space-y-5">
         <div className="flex items-center justify-between">
@@ -557,6 +555,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-    </div>
+    </div>}
+      </TabsContent>
+    </Tabs>
   );
 }

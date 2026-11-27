@@ -18,10 +18,11 @@ import { toast } from "sonner";
 type Props = {
   patientId: string; patientName: string; appointments: Appointment[]; loading: boolean; error: boolean;
   dialogOpen: boolean; onDialogChange: (open: boolean) => void; onChanged: () => void;
+  formOnly?: boolean; initialDate?: string;
 };
 const emptyForm = () => ({ fecha: localDate(), hora: "", tipo: "seguimiento", lugar: "", nota: "" });
 
-export default function PatientAppointments({ patientId, patientName, appointments, loading, error, dialogOpen, onDialogChange, onChanged }: Props) {
+export default function PatientAppointments({ patientId, patientName, appointments, loading, error, dialogOpen, onDialogChange, onChanged, formOnly = false, initialDate }: Props) {
   const { user } = useAuth();
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -48,8 +49,8 @@ export default function PatientAppointments({ patientId, patientName, appointmen
 
   useEffect(() => {
     if (!dialogOpen) return;
-    setForm(editing ? { fecha: editing.fecha, hora: editing.hora?.slice(0, 5) ?? "", tipo: editing.tipo, lugar: editing.lugar ?? "", nota: editing.nota ?? "" } : emptyForm());
-  }, [dialogOpen, editing]);
+    setForm(editing ? { fecha: editing.fecha, hora: editing.hora?.slice(0, 5) ?? "", tipo: editing.tipo, lugar: editing.lugar ?? "", nota: editing.nota ?? "" } : { ...emptyForm(), ...(initialDate ? { fecha: initialDate } : {}) });
+  }, [dialogOpen, editing, initialDate]);
 
   const close = () => { if (saving) return; onDialogChange(false); setEditing(null); };
   const save = async () => {
@@ -107,7 +108,7 @@ export default function PatientAppointments({ patientId, patientName, appointmen
   );
 
   return <>
-    <Card className="rounded-2xl">
+    {!formOnly && <Card className="rounded-2xl">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <CardTitle className="text-lg">Citas</CardTitle>
         <Button onClick={() => { setEditing(null); onDialogChange(true); }} className="rounded-xl"><CalendarPlus className="mr-2 h-4 w-4" />Agendar cita</Button>
@@ -124,7 +125,7 @@ export default function PatientAppointments({ patientId, patientName, appointmen
           {groups.other.length > 0 && <section><h3 className="text-sm font-semibold text-muted-foreground">Otras citas</h3>{groups.other.map(renderAppointment)}</section>}
         </div>}
       </CardContent>
-    </Card>
+    </Card>}
     <Dialog open={dialogOpen} onOpenChange={(next) => { if (!next) close(); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl">
         <DialogHeader><DialogTitle>{editing ? "Editar cita" : "Agendar cita"}</DialogTitle></DialogHeader>
