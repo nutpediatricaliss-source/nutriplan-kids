@@ -175,7 +175,9 @@ export type Database = {
         Row: {
           alergias: string[] | null
           alimentos_gustan: string[] | null
+          alimentos_gustan_texto: string | null
           alimentos_no_gustan: string[] | null
+          alimentos_no_gustan_texto: string | null
           antecedentes_familiares: string | null
           antecedentes_personales: string | null
           contacto_celular: string | null
@@ -199,7 +201,9 @@ export type Database = {
         Insert: {
           alergias?: string[] | null
           alimentos_gustan?: string[] | null
+          alimentos_gustan_texto?: string | null
           alimentos_no_gustan?: string[] | null
+          alimentos_no_gustan_texto?: string | null
           antecedentes_familiares?: string | null
           antecedentes_personales?: string | null
           contacto_celular?: string | null
@@ -223,7 +227,9 @@ export type Database = {
         Update: {
           alergias?: string[] | null
           alimentos_gustan?: string[] | null
+          alimentos_gustan_texto?: string | null
           alimentos_no_gustan?: string[] | null
+          alimentos_no_gustan_texto?: string | null
           antecedentes_familiares?: string | null
           antecedentes_personales?: string | null
           contacto_celular?: string | null

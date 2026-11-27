@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import TagsInput from "@/components/TagsInput";
 import PatientHistoryCards, { type PatientHistoryData } from "@/components/PatientHistoryCards";
+import PatientGrowingTextarea from "@/components/PatientGrowingTextarea";
 import PatientAllergies from "@/components/PatientAllergies";
 import DietaryRecall, { DietaryRecallPreview } from "@/components/DietaryRecall";
 import PatientAppointments from "@/components/PatientAppointments";
@@ -284,7 +285,7 @@ export default function PacienteDetalle() {
   if (!paciente) return <p className="text-sm text-muted-foreground">Paciente no encontrado.</p>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" onClick={() => navigate("/pacientes")} className="rounded-xl">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -314,38 +315,44 @@ export default function PacienteDetalle() {
         <PatientAllergies allergies={paciente.alergias} />
       </div>
 
+      <PatientHistoryCards key={paciente.id} patient={paciente}
+        onSaved={(patch) => setPaciente((current) => current ? { ...current, ...patch } : current)}
+        generalCard={
       <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-lg">Datos generales</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3">
+          <CardTitle className="text-base">Datos generales</CardTitle>
+          <Button onClick={guardarPaciente} disabled={savingPaciente} size="sm" className="h-8 rounded-xl"><Save className="mr-1.5 h-3.5 w-3.5" />Guardar cambios</Button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Nombre</Label>
+        <CardContent className="space-y-2 px-4 pb-3">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="min-w-0 space-y-1">
+              <Label className="text-xs" htmlFor="paciente-nombre">Nombre</Label>
               <Input
+                id="paciente-nombre"
                 value={paciente.nombre}
                 onChange={(e) => setPaciente({ ...paciente, nombre: e.target.value })}
-                className="rounded-xl"
+                className="h-8 min-w-0 rounded-xl"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Fecha de nacimiento</Label>
+            <div className="min-w-0 space-y-1">
+              <Label className="text-xs" htmlFor="paciente-nacimiento">Fecha de nacimiento</Label>
               <Input
+                id="paciente-nacimiento"
                 type="date"
                 value={paciente.fecha_nacimiento}
                 onChange={(e) =>
                   setPaciente({ ...paciente, fecha_nacimiento: e.target.value })
                 }
-                className="rounded-xl"
+                className="h-8 min-w-0 rounded-xl"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Sexo</Label>
+            <div className="min-w-0 space-y-1">
+              <Label className="text-xs" htmlFor="paciente-sexo">Sexo</Label>
               <Select
                 value={paciente.sexo}
                 onValueChange={(v) => setPaciente({ ...paciente, sexo: v })}
               >
-                <SelectTrigger className="rounded-xl">
+                <SelectTrigger id="paciente-sexo" className="h-8 min-w-0 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -355,34 +362,29 @@ export default function PacienteDetalle() {
               </Select>
             </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="paciente-diagnosticos">Diagnóstico</Label>
+          <div className="grid items-start gap-2 sm:grid-cols-2">
+            <div className="min-w-0 space-y-1">
+              <Label className="text-xs" htmlFor="paciente-diagnosticos">Diagnóstico</Label>
               <TagsInput id="paciente-diagnosticos" value={paciente.diagnosticos} suggestions={suggestions}
                 onChange={(diagnosticos) => setPaciente((current) => current ? { ...current, diagnosticos } : current)} />
               {suggestionsError && <p className="text-sm text-destructive">No se pudieron cargar las sugerencias.</p>}
             </div>
-            <div className="space-y-2">
-              <Label>Notas generales</Label>
-              <Textarea
+            <div className="min-w-0 space-y-1">
+              <Label className="text-xs" htmlFor="paciente-notas-generales">Notas generales</Label>
+              <PatientGrowingTextarea
+                id="paciente-notas-generales"
                 value={paciente.notas_generales ?? ""}
                 onChange={(e) =>
                   setPaciente({ ...paciente, notas_generales: e.target.value })
                 }
-                className="rounded-xl"
-                rows={3}
+                rows={2}
               />
             </div>
           </div>
-          <Button onClick={guardarPaciente} disabled={savingPaciente} className="rounded-xl">
-            <Save className="mr-2 h-4 w-4" />
-            Guardar cambios
-          </Button>
         </CardContent>
       </Card>
 
-      <PatientHistoryCards key={paciente.id} patient={paciente}
-        onSaved={(patch) => setPaciente((current) => current ? { ...current, ...patch } : current)} />
+        } />
 
       <PatientAppointments patientId={paciente.id} patientName={paciente.nombre}
         appointments={appointmentsQuery.data ?? []} loading={appointmentsQuery.isLoading} error={appointmentsQuery.isError}

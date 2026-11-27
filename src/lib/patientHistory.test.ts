@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clinicalSuggestions, initialClinicalSuggestions, validContactEmail, whatsappUrl } from "./patientHistory";
+import { clinicalSuggestions, foodPreferenceText, initialClinicalSuggestions, validContactEmail, whatsappUrl } from "./patientHistory";
 import { patientMatches } from "./diagnosisTags";
 
 describe("patient contact and history", () => {
@@ -24,18 +24,25 @@ describe("patient contact and history", () => {
     expect(initialClinicalSuggestions.intolerancias).toEqual(["Lactosa", "Gluten", "Fructosa"]);
   });
   it("keeps tag suggestions separate by field and deduplicates case and accents", () => {
-    const tags = clinicalSuggestions([{ alergias: ["MANI", "Kiwi"], intolerancias: ["Sorbitol"], alimentos_gustan: ["Pera"], alimentos_no_gustan: ["Brócoli"] }]);
+    const tags = clinicalSuggestions([{ alergias: ["MANI", "Kiwi"], intolerancias: ["Sorbitol"] }]);
     expect(tags.alergias.filter((tag) => /man[ií]/i.test(tag))).toEqual(["Maní"]);
     expect(tags.alergias).toContain("Kiwi");
     expect(tags.alergias).not.toContain("Sorbitol");
     expect(tags.intolerancias).toContain("Sorbitol");
-    expect(tags.alimentos_gustan).toEqual(["Pera"]);
-    expect(tags.alimentos_no_gustan).toEqual(["Brócoli"]);
   });
   it("finds either representative without distinguishing case or accents", () => {
     const patient = { nombre: "Paciente", diagnosticos: [], representante1_nombre: "María Pérez", representante2_nombre: "José López" };
     expect(patientMatches(patient, "MARIA")).toBe(true);
     expect(patientMatches(patient, "jose lopez")).toBe(true);
     expect(patientMatches(patient, "Ana")).toBe(false);
+  });
+});
+describe("free text food preferences", () => {
+  it("preserves all legacy preferences as comma separated text", () => {
+    expect(foodPreferenceText(null, ["Pera", "Arroz con pollo", "Brócoli"])).toBe("Pera, Arroz con pollo, Brócoli");
+  });
+  it("keeps edited free text including newlines instead of stale legacy tags", () => {
+    expect(foodPreferenceText("Pera\nPrefiere frutas", ["Arroz"])).toBe("Pera\nPrefiere frutas");
+    expect(foodPreferenceText("", ["Arroz"])).toBe("");
   });
 });

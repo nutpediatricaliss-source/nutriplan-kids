@@ -13,7 +13,7 @@ export function useClinicalSuggestions() {
       const rows: Record<ClinicalTagField, string[] | null>[] = [];
       for (let offset = 0; ; offset += 1000) {
         const { data, error } = await supabase.from("pacientes")
-          .select("alergias,intolerancias,alimentos_gustan,alimentos_no_gustan")
+          .select("alergias,intolerancias")
           .eq("user_id", user.id).order("id").range(offset, offset + 999);
         if (error) throw error;
         rows.push(...(data ?? []));

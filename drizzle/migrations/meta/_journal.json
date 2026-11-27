@@ -43,6 +43,13 @@
       "when": 1795750342397,
       "tag": "0005_consultation_24h_recall",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795751132480,
+      "tag": "0006_patient_food_preferences_free_text",
+      "breakpoints": true
     }
   ]
 }

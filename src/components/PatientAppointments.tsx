@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarPlus, Pencil, Trash2 } from "lucide-react";
+import { CalendarPlus, Pencil, Trash2, ListChecks, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { appointmentLabel, appointmentStates, appointmentTypes, DEFAULT_DURATION_MIN, groupAppointments, localDate, type Appointment } from "@/lib/appointments";
 import { toast } from "sonner";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 
 type Props = {
   patientId: string; patientName: string; appointments: Appointment[]; loading: boolean; error: boolean;
@@ -84,45 +85,53 @@ export default function PatientAppointments({ patientId, patientName, appointmen
     else { setToDelete(null); toast.success("Cita eliminada"); onChanged(); }
   };
   const renderAppointment = (appointment: Appointment) => (
-    <div key={appointment.id} data-appointment-id={appointment.id} className="flex flex-wrap items-start justify-between gap-3 border-b py-3 last:border-0">
-      <div className="min-w-0 w-full space-y-1 sm:w-auto sm:flex-1">
-        <p className="font-medium">{appointmentLabel(appointment)}</p>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>{appointmentTypes[appointment.tipo as keyof typeof appointmentTypes]}</span>
-          <Badge variant="secondary" className="rounded-lg font-normal">{appointmentStates[appointment.estado as keyof typeof appointmentStates]}</Badge>
-        </div>
-        {appointment.lugar && <p className="break-words text-sm text-muted-foreground">{appointment.lugar}</p>}
-        {appointment.nota && <p className="whitespace-pre-wrap break-words text-sm">{appointment.nota}</p>}
+    <article key={appointment.id} data-appointment-id={appointment.id} aria-label={appointmentLabel(appointment)}
+      className="flex w-40 max-w-full flex-col gap-1.5 rounded-xl border bg-muted/30 p-2.5">
+      <div title={appointmentLabel(appointment)}>
+        <p className="text-xl font-semibold text-primary">{new Date(`${appointment.fecha}T12:00:00`).toLocaleDateString("es", { day: "numeric", month: "short" })}</p>
+        {appointment.hora && <p className="text-sm font-medium tabular-nums">{appointment.hora.slice(0, 5)}</p>}
       </div>
-      <div className="flex flex-wrap items-center gap-1">
-        <Select value={appointment.estado} onValueChange={(state) => void changeState(appointment, state)} disabled={busyId !== null}>
-          <SelectTrigger className="w-36 rounded-xl" aria-label={`Estado de cita ${appointmentLabel(appointment)}`}><SelectValue /></SelectTrigger>
-          <SelectContent>{Object.entries(appointmentStates).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
-        </Select>
-        <Button variant="ghost" size="icon" aria-label="Editar cita" title="Editar cita" disabled={busyId !== null}
-          onClick={() => { setEditing(appointment); onDialogChange(true); }}><Pencil className="h-4 w-4" /></Button>
+      <p className="text-xs font-medium">{appointmentTypes[appointment.tipo as keyof typeof appointmentTypes]}</p>
+      {appointment.lugar && <p className="break-words text-xs text-muted-foreground">{appointment.lugar}</p>}
+      <Badge variant="secondary" className="w-fit max-w-full whitespace-normal rounded-lg text-xs font-normal">{appointmentStates[appointment.estado as keyof typeof appointmentStates]}</Badge>
+      {appointment.nota && <p className="whitespace-pre-wrap break-words text-xs">{appointment.nota}</p>}
+      <div className="mt-auto flex items-center gap-1 pt-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Cambiar estado" aria-label={`Estado de cita ${appointmentLabel(appointment)}`} disabled={busyId !== null}><ListChecks className="h-3.5 w-3.5" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup value={appointment.estado} onValueChange={(state) => void changeState(appointment, state)}>
+              {Object.entries(appointmentStates).map(([value, label]) => <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>)}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Editar cita" title="Editar cita" disabled={busyId !== null}
+          onClick={() => { setEditing(appointment); onDialogChange(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
         <Button variant="ghost" size="icon" aria-label="Eliminar cita" title="Eliminar cita" disabled={busyId !== null}
-          onClick={() => setToDelete(appointment)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+          onClick={() => setToDelete(appointment)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
       </div>
-    </div>
+    </article>
   );
 
   return <>
     {!formOnly && <Card className="rounded-2xl">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-        <CardTitle className="text-lg">Citas</CardTitle>
-        <Button onClick={() => { setEditing(null); onDialogChange(true); }} className="rounded-xl"><CalendarPlus className="mr-2 h-4 w-4" />Agendar cita</Button>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3">
+        <CardTitle className="text-base">Citas</CardTitle>
+        <Button size="sm" onClick={() => { setEditing(null); onDialogChange(true); }} className="h-8 rounded-xl"><CalendarPlus className="mr-1.5 h-3.5 w-3.5" />Agendar cita</Button>
       </CardHeader>
-      <CardContent>
-        {loading ? <p className="text-sm text-muted-foreground">Cargando citas…</p> : error ? <div className="flex items-center gap-3"><p className="text-sm text-destructive">No se pudieron cargar las citas.</p><Button variant="outline" onClick={onChanged}>Reintentar</Button></div> : <div className="space-y-5">
-          <section><h3 className="text-sm font-semibold text-muted-foreground">Próximas citas</h3>
-            {groups.upcoming.length ? groups.upcoming.map(renderAppointment) : <p className="py-3 text-sm text-muted-foreground">Sin citas programadas.</p>}
+      <CardContent className="px-4 pb-3">
+        {loading ? <p className="text-sm text-muted-foreground">Cargando citas…</p> : error ? <div className="flex items-center gap-3"><p className="text-sm text-destructive">No se pudieron cargar las citas.</p><Button variant="outline" onClick={onChanged}>Reintentar</Button></div> : <div className="space-y-3">
+          <section aria-label="Próximas citas">
+            {groups.upcoming.length ? <div className="flex flex-wrap gap-2">{groups.upcoming.map(renderAppointment)}</div> : <p className="text-sm text-muted-foreground">Sin citas programadas.</p>}
           </section>
-          {groups.past.length > 0 && <section><h3 className="text-sm font-semibold text-muted-foreground">Citas pasadas</h3>
-            {(showAllPast ? groups.past : groups.past.slice(0, 5)).map(renderAppointment)}
-            {groups.past.length > 5 && <Button variant="ghost" size="sm" onClick={() => setShowAllPast(!showAllPast)}>{showAllPast ? "Ver menos" : "Ver todas"}</Button>}
+          {groups.other.length > 0 && <section><h3 className="mb-2 text-xs font-semibold text-muted-foreground">Otras citas</h3><div className="flex flex-wrap gap-2">{groups.other.map(renderAppointment)}</div></section>}
+          {groups.past.length > 0 && <section>
+            <Button variant="ghost" size="sm" className="h-7 px-0 text-xs text-muted-foreground" aria-expanded={showAllPast} aria-controls="patient-past-appointments" onClick={() => setShowAllPast(!showAllPast)}>
+              {showAllPast ? <ChevronUp className="mr-1 h-3.5 w-3.5" /> : <ChevronDown className="mr-1 h-3.5 w-3.5" />}Ver citas pasadas ({groups.past.length})
+            </Button>
+            {showAllPast && <div id="patient-past-appointments" className="mt-2 flex flex-wrap gap-2">{groups.past.map(renderAppointment)}</div>}
           </section>}
-          {groups.other.length > 0 && <section><h3 className="text-sm font-semibold text-muted-foreground">Otras citas</h3>{groups.other.map(renderAppointment)}</section>}
         </div>}
       </CardContent>
     </Card>}

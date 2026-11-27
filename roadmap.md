@@ -21,3 +21,8 @@
 - [x] Add optional recall field without changing access rules or existing consultation data.
 - [x] Add growing recall input, safe format insertion, and expandable history preview.
 - [x] Test new/edit consultation save/reload and existing consultation compatibility with a temporary test account; commit.
+
+# Compact patient record
+- [x] Preserve food preferences as free text and stop suggesting preference tags.
+- [x] Compact independent general/contact/history cards and appointment tiles without altering consultations or Dashboard.
+- [x] Verify preserved data, independent saves, appointment actions and desktop/mobile layout; commit.
