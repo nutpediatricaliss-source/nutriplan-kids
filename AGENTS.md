@@ -1,2 +1,3 @@
 # Architecture rules
 - Keep diagnosis normalization in a shared pure helper and tag suggestions scoped to the signed-in user's paginated patient records, so forms share deduplication behavior without exposing another user's tags.
+- Keep appointments in a dedicated patient card and shared query hook; complete same-date scheduled appointments with an invoker-security consultation trigger so saving and completion are atomic and obey owner access.

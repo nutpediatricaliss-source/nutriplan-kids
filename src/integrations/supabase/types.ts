@@ -59,6 +59,59 @@ export type Database = {
         }
         Relationships: []
       }
+      citas: {
+        Row: {
+          created_at: string
+          duracion_min: number
+          estado: string
+          fecha: string
+          hora: string | null
+          id: string
+          lugar: string | null
+          nota: string | null
+          paciente_id: string
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duracion_min?: number
+          estado?: string
+          fecha: string
+          hora?: string | null
+          id?: string
+          lugar?: string | null
+          nota?: string | null
+          paciente_id: string
+          tipo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duracion_min?: number
+          estado?: string
+          fecha?: string
+          hora?: string | null
+          id?: string
+          lugar?: string | null
+          nota?: string | null
+          paciente_id?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "citas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultas: {
         Row: {
           created_at: string

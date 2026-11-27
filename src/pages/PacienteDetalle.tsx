@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import TagsInput from "@/components/TagsInput";
+import PatientAppointments from "@/components/PatientAppointments";
+import { usePatientAppointments } from "@/hooks/usePatientAppointments";
+import { appointmentLabel, groupAppointments } from "@/lib/appointments";
 import { useDiagnosisSuggestions } from "@/hooks/useDiagnosisSuggestions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +97,9 @@ export default function PacienteDetalle() {
   const [savingPaciente, setSavingPaciente] = useState(false);
   const [open, setOpen] = useState(false);
   const [savingConsulta, setSavingConsulta] = useState(false);
+  const [appointmentOpen, setAppointmentOpen] = useState(false);
+  const appointmentsQuery = usePatientAppointments(id);
+  const nextAppointment = groupAppointments(appointmentsQuery.data ?? []).upcoming[0];
 
   // Formulario de nueva consulta
   const [fecha, setFecha] = useState(hoyISO());
@@ -228,6 +234,7 @@ export default function PacienteDetalle() {
       return;
     }
     toast.success(editingId ? "Consulta actualizada" : "Consulta registrada");
+    void appointmentsQuery.refetch();
     setEditingId(null);
     setOpen(false);
     setPeso("");
@@ -274,7 +281,7 @@ export default function PacienteDetalle() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Pacientes
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={crearPlan} className="rounded-xl">
             <FileText className="mr-2 h-4 w-4" />
             Crear plan de menú
@@ -287,7 +294,10 @@ export default function PacienteDetalle() {
       </div>
 
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{paciente.nombre}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">{paciente.nombre}</h1>
+          {nextAppointment && <Badge variant="secondary" className="gap-1 rounded-lg font-normal"><CalendarDays className="h-3.5 w-3.5" />Próxima cita: {appointmentLabel(nextAppointment)}</Badge>}
+        </div>
         <p className="text-sm text-muted-foreground">
           {edadLegible(paciente.fecha_nacimiento)} ·{" "}
           {paciente.sexo === "F" ? "Femenino" : "Masculino"}
@@ -360,6 +370,10 @@ export default function PacienteDetalle() {
           </Button>
         </CardContent>
       </Card>
+
+      <PatientAppointments patientId={paciente.id} patientName={paciente.nombre}
+        appointments={appointmentsQuery.data ?? []} loading={appointmentsQuery.isLoading} error={appointmentsQuery.isError}
+        dialogOpen={appointmentOpen} onDialogChange={setAppointmentOpen} onChanged={() => { void appointmentsQuery.refetch(); }} />
 
       <Card className="rounded-2xl">
         <CardHeader>
@@ -451,7 +465,7 @@ export default function PacienteDetalle() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open && !appointmentOpen} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar consulta" : "Nueva consulta"}</DialogTitle>
@@ -586,6 +600,9 @@ export default function PacienteDetalle() {
               </div>
             </div>
           </div>
+          {!editingId && <Button variant="outline" onClick={() => setAppointmentOpen(true)} className="mb-2 rounded-xl">
+            <CalendarDays className="mr-2 h-4 w-4" />Agendar próxima consulta
+          </Button>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl">
               Cancelar
