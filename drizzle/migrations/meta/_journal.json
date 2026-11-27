@@ -29,6 +29,13 @@
       "when": 1795748789177,
       "tag": "0003_patient_appointments",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795749882437,
+      "tag": "0004_patient_contact_clinical_history",
+      "breakpoints": true
     }
   ]
 }

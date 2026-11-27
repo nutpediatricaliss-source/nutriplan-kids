@@ -170,40 +170,76 @@ export type Database = {
       }
       pacientes: {
         Row: {
+          alergias: string[] | null
+          alimentos_gustan: string[] | null
+          alimentos_no_gustan: string[] | null
+          antecedentes_familiares: string | null
+          antecedentes_personales: string | null
+          contacto_celular: string | null
+          contacto_correo: string | null
           created_at: string
+          datos_facturacion: string | null
           diagnostico: string | null
           diagnosticos: string[]
           fecha_nacimiento: string
           id: string
+          intolerancias: string[] | null
           nombre: string
           notas_generales: string | null
+          representante1_nombre: string | null
+          representante2_nombre: string | null
           sexo: string
           updated_at: string
           user_id: string
+          vitaminas_suplementos: string | null
         }
         Insert: {
+          alergias?: string[] | null
+          alimentos_gustan?: string[] | null
+          alimentos_no_gustan?: string[] | null
+          antecedentes_familiares?: string | null
+          antecedentes_personales?: string | null
+          contacto_celular?: string | null
+          contacto_correo?: string | null
           created_at?: string
+          datos_facturacion?: string | null
           diagnostico?: string | null
           diagnosticos?: string[]
           fecha_nacimiento: string
           id?: string
+          intolerancias?: string[] | null
           nombre: string
           notas_generales?: string | null
+          representante1_nombre?: string | null
+          representante2_nombre?: string | null
           sexo?: string
           updated_at?: string
           user_id: string
+          vitaminas_suplementos?: string | null
         }
         Update: {
+          alergias?: string[] | null
+          alimentos_gustan?: string[] | null
+          alimentos_no_gustan?: string[] | null
+          antecedentes_familiares?: string | null
+          antecedentes_personales?: string | null
+          contacto_celular?: string | null
+          contacto_correo?: string | null
           created_at?: string
+          datos_facturacion?: string | null
           diagnostico?: string | null
           diagnosticos?: string[]
           fecha_nacimiento?: string
           id?: string
+          intolerancias?: string[] | null
           nombre?: string
           notas_generales?: string | null
+          representante1_nombre?: string | null
+          representante2_nombre?: string | null
           sexo?: string
           updated_at?: string
           user_id?: string
+          vitaminas_suplementos?: string | null
         }
         Relationships: []
       }

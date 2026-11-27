@@ -1,4 +1,5 @@
 # Architecture rules
-- Keep diagnosis normalization in a shared pure helper and tag suggestions scoped to the signed-in user's paginated patient records, so forms share deduplication behavior without exposing another user's tags.
+- Keep patient tag normalization in a shared pure helper and suggestions scoped to the signed-in user's paginated patient records and individual field, so forms deduplicate consistently without mixing fields or exposing another user's tags.
+- Keep contact and clinical history in separate patient cards with independent drafts and field-scoped saves, so saving one section cannot overwrite unsaved data in another.
 - Keep appointments in a dedicated patient card and shared query hook; complete same-date scheduled appointments with an invoker-security consultation trigger so saving and completion are atomic and obey owner access.
 - Keep Dashboard calendar dates as ISO date-only strings with America/Guayaquil today and UTC date arithmetic; query paginated owner-scoped records by visible dates and reuse the patient appointment form without changing patient-page behavior.

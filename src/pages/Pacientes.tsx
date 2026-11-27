@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import TagsInput from "@/components/TagsInput";
+import PatientAllergies from "@/components/PatientAllergies";
 import { useDiagnosisSuggestions } from "@/hooks/useDiagnosisSuggestions";
 import { patientMatches } from "@/lib/diagnosisTags";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,9 @@ type Paciente = {
   diagnostico: string | null;
   diagnosticos: string[];
   notas_generales: string | null;
+  representante1_nombre: string | null;
+  representante2_nombre: string | null;
+  alergias: string[] | null;
 };
 
 export default function Pacientes() {
@@ -126,7 +130,7 @@ export default function Pacientes() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nombre o diagnóstico..."
+          placeholder="Buscar paciente, representante o diagnóstico..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="rounded-xl pl-9"
@@ -157,6 +161,7 @@ export default function Pacientes() {
               <CardContent className="flex items-center justify-between gap-3 p-5">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{p.nombre}</p>
+                  <PatientAllergies allergies={p.alergias} />
                   <p className="text-sm text-muted-foreground">
                     {edadLegible(p.fecha_nacimiento)}
                   </p>

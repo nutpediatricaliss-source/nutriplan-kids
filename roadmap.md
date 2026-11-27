@@ -12,3 +12,7 @@
 - [x] Keep current menu/template flows under a second tab and add month/week agenda.
 - [x] Add day panel, shared scheduling form, place filter and upcoming list using Ecuador dates.
 - [x] Test agenda rules, real scheduling and existing menu/template controls; commit.
+# Patient contact and clinical history
+- [x] Add optional patient fields without changing access rules.
+- [x] Add separate contact/history cards, scoped tag suggestions, allergy badges and representative search.
+- [x] Test validation and patient save/reload, confirm existing records, and commit.

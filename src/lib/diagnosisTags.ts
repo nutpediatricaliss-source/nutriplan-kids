@@ -19,7 +19,7 @@ export function matchingTags(suggestions: string[], selected: string[], query: s
     !keys.has(normalizeTag(tag)) && normalizeTag(tag).includes(normalizeTag(query)));
 }
 
-export function patientMatches(patient: { nombre: string; diagnosticos: string[] }, query: string) {
+export function patientMatches(patient: { nombre: string; diagnosticos: string[]; representante1_nombre?: string | null; representante2_nombre?: string | null }, query: string) {
   const key = normalizeTag(query);
-  return [patient.nombre, ...patient.diagnosticos].some((text) => normalizeTag(text).includes(key));
+  return [patient.nombre, ...patient.diagnosticos, patient.representante1_nombre ?? "", patient.representante2_nombre ?? ""].some((text) => normalizeTag(text).includes(key));
 }

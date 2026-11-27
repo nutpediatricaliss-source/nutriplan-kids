@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import TagsInput from "@/components/TagsInput";
+import PatientHistoryCards, { type PatientHistoryData } from "@/components/PatientHistoryCards";
+import PatientAllergies from "@/components/PatientAllergies";
 import PatientAppointments from "@/components/PatientAppointments";
 import { usePatientAppointments } from "@/hooks/usePatientAppointments";
 import { appointmentLabel, groupAppointments } from "@/lib/appointments";
@@ -59,7 +61,7 @@ import {
   type Sexo,
 } from "@/lib/nutritionCalc";
 
-type Paciente = {
+type Paciente = PatientHistoryData & {
   id: string;
   nombre: string;
   fecha_nacimiento: string;
@@ -302,6 +304,7 @@ export default function PacienteDetalle() {
           {edadLegible(paciente.fecha_nacimiento)} ·{" "}
           {paciente.sexo === "F" ? "Femenino" : "Masculino"}
         </p>
+        <PatientAllergies allergies={paciente.alergias} />
       </div>
 
       <Card className="rounded-2xl">
@@ -370,6 +373,9 @@ export default function PacienteDetalle() {
           </Button>
         </CardContent>
       </Card>
+
+      <PatientHistoryCards key={paciente.id} patient={paciente}
+        onSaved={(patch) => setPaciente((current) => current ? { ...current, ...patch } : current)} />
 
       <PatientAppointments patientId={paciente.id} patientName={paciente.nombre}
         appointments={appointmentsQuery.data ?? []} loading={appointmentsQuery.isLoading} error={appointmentsQuery.isError}

@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addTags, matchingTags, normalizeTag } from "@/lib/diagnosisTags";
 
-type Props = { value: string[]; onChange: (tags: string[]) => void; suggestions: string[]; id?: string };
+type Props = { value: string[]; onChange: (tags: string[]) => void; suggestions: string[]; id?: string; label?: string };
 
-export default function TagsInput({ value, onChange, suggestions, id }: Props) {
+export default function TagsInput({ value, onChange, suggestions, id, label = "Diagnóstico" }: Props) {
   const listId = useId();
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
@@ -38,9 +38,9 @@ export default function TagsInput({ value, onChange, suggestions, id }: Props) {
           </Button>
         </Badge>)}
       </div>}
-      <Input id={id} aria-label="Diagnóstico" role="combobox" aria-expanded={focused && Boolean(query) && options.length > 0}
+      <Input id={id} aria-label={label} role="combobox" aria-expanded={focused && Boolean(query) && options.length > 0}
         aria-controls={listId} aria-autocomplete="list" aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-        value={text} placeholder="Agregar diagnóstico…" className="rounded-xl"
+        value={text} placeholder={`Agregar ${label.toLowerCase()}…`} className="rounded-xl"
         onFocus={() => setFocused(true)}
         onChange={(event) => {
           const next = event.target.value;
@@ -58,7 +58,7 @@ export default function TagsInput({ value, onChange, suggestions, id }: Props) {
             event.preventDefault(); setActive((index) => (index <= 0 ? options.length - 1 : index - 1));
           } else if (event.key === "Escape") { setFocused(false); setActive(-1); }
         }} />
-      {focused && query && options.length > 0 && <div id={listId} role="listbox" aria-label="Diagnósticos sugeridos"
+      {focused && query && options.length > 0 && <div id={listId} role="listbox" aria-label={`${label}: sugerencias`}
         className="max-h-48 w-full overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-md">
         {options.map((option, index) => <Button key={normalizeTag(option)} type="button" variant="ghost" role="option"
           id={`${listId}-${index}`} aria-selected={active === index} className="h-auto w-full justify-start whitespace-normal text-left"

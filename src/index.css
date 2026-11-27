@@ -32,6 +32,10 @@ All colors MUST be HSL.
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
+    --allergy: 5 65% 95%;
+    --allergy-foreground: 5 48% 38%;
+    --allergy-border: 5 50% 85%;
+
     --border: 37 25% 88%;
     --input: 37 25% 88%;
     --ring: 37 50% 48%;
@@ -84,6 +88,10 @@ All colors MUST be HSL.
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
+    --allergy: 5 32% 22%;
+    --allergy-foreground: 5 65% 85%;
+    --allergy-border: 5 35% 38%;
+
     --border: 30 10% 20%;
     --input: 30 10% 20%;
     --ring: 37 60% 60%;
@@ -107,6 +115,14 @@ All colors MUST be HSL.
     --gold-light: 40 30% 25%;
     --gold: 37 50% 50%;
     --gold-dark: 37 40% 65%;
+  }
+}
+
+@layer components {
+  .allergy-badge {
+    background-color: hsl(var(--allergy));
+    color: hsl(var(--allergy-foreground));
+    border-color: hsl(var(--allergy-border));
   }
 }
 
