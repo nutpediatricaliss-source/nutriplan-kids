@@ -18,6 +18,6 @@
 - [x] Test validation and patient save/reload, confirm existing records, and commit.
 
 # Consultation 24-hour recall
-- [ ] Add optional recall field without changing access rules or existing consultation data.
-- [ ] Add growing recall input, safe format insertion, and expandable history preview.
-- [ ] Test new/edit consultation save/reload and existing consultation compatibility; commit.
+- [x] Add optional recall field without changing access rules or existing consultation data.
+- [x] Add growing recall input, safe format insertion, and expandable history preview.
+- [x] Test new/edit consultation save/reload and existing consultation compatibility with a temporary test account; commit.
