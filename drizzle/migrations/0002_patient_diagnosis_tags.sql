@@ -1,0 +1,3 @@
+ALTER TABLE public.pacientes ADD COLUMN diagnosticos text[] NOT NULL DEFAULT '{}'::text[];
+UPDATE public.pacientes p SET diagnosticos = ARRAY(SELECT label FROM (SELECT DISTINCT ON (normalized) label, position FROM (SELECT btrim(part) AS label, lower(translate(btrim(part), 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun')) AS normalized, position FROM regexp_split_to_table(coalesce(p.diagnostico, ''), '[,;]') WITH ORDINALITY AS parts(part, position) WHERE btrim(part) <> '') cleaned ORDER BY normalized, position) unique_labels ORDER BY position);
+COMMENT ON COLUMN public.pacientes.diagnostico IS 'DEPRECATED: replaced by diagnosticos; original diagnosis retained for reference';

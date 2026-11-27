@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import TagsInput from "@/components/TagsInput";
+import { useDiagnosisSuggestions } from "@/hooks/useDiagnosisSuggestions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -60,6 +62,7 @@ type Paciente = {
   fecha_nacimiento: string;
   sexo: string;
   diagnostico: string | null;
+  diagnosticos: string[];
   notas_generales: string | null;
 };
 
@@ -83,6 +86,7 @@ export default function PacienteDetalle() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: suggestions = [], refetch: refreshSuggestions, isError: suggestionsError } = useDiagnosisSuggestions();
 
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [consultas, setConsultas] = useState<Consulta[]>([]);
@@ -184,13 +188,13 @@ export default function PacienteDetalle() {
         nombre: paciente.nombre,
         fecha_nacimiento: paciente.fecha_nacimiento,
         sexo: paciente.sexo,
-        diagnostico: paciente.diagnostico,
+        diagnosticos: paciente.diagnosticos,
         notas_generales: paciente.notas_generales,
       })
       .eq("id", paciente.id);
     setSavingPaciente(false);
     if (error) toast.error("No se pudieron guardar los cambios");
-    else toast.success("Datos actualizados");
+    else { toast.success("Datos actualizados"); void refreshSuggestions(); }
   };
 
   const guardarConsulta = async () => {
@@ -333,13 +337,10 @@ export default function PacienteDetalle() {
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Diagnóstico</Label>
-              <Textarea
-                value={paciente.diagnostico ?? ""}
-                onChange={(e) => setPaciente({ ...paciente, diagnostico: e.target.value })}
-                className="rounded-xl"
-                rows={3}
-              />
+              <Label htmlFor="paciente-diagnosticos">Diagnóstico</Label>
+              <TagsInput id="paciente-diagnosticos" value={paciente.diagnosticos} suggestions={suggestions}
+                onChange={(diagnosticos) => setPaciente((current) => current ? { ...current, diagnosticos } : current)} />
+              {suggestionsError && <p className="text-sm text-destructive">No se pudieron cargar las sugerencias.</p>}
             </div>
             <div className="space-y-2">
               <Label>Notas generales</Label>

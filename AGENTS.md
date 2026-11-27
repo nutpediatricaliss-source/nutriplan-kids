@@ -1,0 +1,2 @@
+# Architecture rules
+- Keep diagnosis normalization in a shared pure helper and tag suggestions scoped to the signed-in user's paginated patient records, so forms share deduplication behavior without exposing another user's tags.

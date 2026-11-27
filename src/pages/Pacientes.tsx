@@ -5,7 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import TagsInput from "@/components/TagsInput";
+import { useDiagnosisSuggestions } from "@/hooks/useDiagnosisSuggestions";
+import { patientMatches } from "@/lib/diagnosisTags";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,11 +34,13 @@ type Paciente = {
   fecha_nacimiento: string;
   sexo: string;
   diagnostico: string | null;
+  diagnosticos: string[];
   notas_generales: string | null;
 };
 
 export default function Pacientes() {
   const { user } = useAuth();
+  const { data: suggestions = [], refetch: refreshSuggestions, isError: suggestionsError } = useDiagnosisSuggestions();
   const navigate = useNavigate();
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,30 +51,35 @@ export default function Pacientes() {
     nombre: "",
     fecha_nacimiento: "",
     sexo: "M",
-    diagnostico: "",
+    diagnosticos: [] as string[],
   });
 
   const fetchPacientes = async () => {
-    const { data, error } = await supabase
-      .from("pacientes")
-      .select("*")
-      .order("nombre");
-    if (error) toast.error("Error al cargar pacientes");
-    else setPacientes((data ?? []) as Paciente[]);
+    if (!user) return;
+    const all: Paciente[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase.from("pacientes").select("*")
+        .eq("user_id", user.id).order("nombre").order("id").range(offset, offset + 999);
+      if (error) { toast.error("Error al cargar pacientes"); setLoading(false); return; }
+      all.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+    setPacientes(all);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchPacientes();
-  }, []);
+  }, [user?.id]);
 
   const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
+    const q = busqueda.trim();
     if (!q) return pacientes;
-    return pacientes.filter((p) => p.nombre.toLowerCase().includes(q));
+    return pacientes.filter((p) => patientMatches(p, q));
   }, [pacientes, busqueda]);
 
   const crearPaciente = async () => {
+    if (!user) return;
     if (!form.nombre.trim() || !form.fecha_nacimiento) {
       toast.error("Nombre y fecha de nacimiento son obligatorios");
       return;
@@ -79,11 +88,11 @@ export default function Pacientes() {
     const { data, error } = await supabase
       .from("pacientes")
       .insert({
-        user_id: user!.id,
+        user_id: user.id,
         nombre: form.nombre.trim(),
         fecha_nacimiento: form.fecha_nacimiento,
         sexo: form.sexo,
-        diagnostico: form.diagnostico || null,
+        diagnosticos: form.diagnosticos,
       })
       .select()
       .single();
@@ -93,7 +102,8 @@ export default function Pacientes() {
       return;
     }
     setOpen(false);
-    setForm({ nombre: "", fecha_nacimiento: "", sexo: "M", diagnostico: "" });
+    setForm({ nombre: "", fecha_nacimiento: "", sexo: "M", diagnosticos: [] });
+    void refreshSuggestions();
     toast.success("Paciente creado");
     navigate(`/pacientes/${data.id}`);
   };
@@ -116,7 +126,7 @@ export default function Pacientes() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nombre..."
+          placeholder="Buscar por nombre o diagnóstico..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="rounded-xl pl-9"
@@ -150,11 +160,13 @@ export default function Pacientes() {
                   <p className="text-sm text-muted-foreground">
                     {edadLegible(p.fecha_nacimiento)}
                   </p>
-                  {p.diagnostico && (
-                    <Badge variant="secondary" className="mt-2 rounded-lg font-normal">
-                      {p.diagnostico}
-                    </Badge>
-                  )}
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {p.diagnosticos.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="max-w-full break-words rounded-lg text-xs font-normal">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
               </CardContent>
@@ -164,7 +176,7 @@ export default function Pacientes() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle>Nuevo paciente</DialogTitle>
           </DialogHeader>
@@ -206,13 +218,10 @@ export default function Pacientes() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Diagnóstico (opcional)</Label>
-              <Textarea
-                value={form.diagnostico}
-                onChange={(e) => setForm({ ...form, diagnostico: e.target.value })}
-                className="rounded-xl"
-                rows={2}
-              />
+              <Label htmlFor="nuevo-diagnosticos">Diagnóstico (opcional)</Label>
+              <TagsInput id="nuevo-diagnosticos" value={form.diagnosticos} suggestions={suggestions}
+                onChange={(diagnosticos) => setForm((current) => ({ ...current, diagnosticos }))} />
+              {suggestionsError && <p className="text-sm text-destructive">No se pudieron cargar las sugerencias.</p>}
             </div>
           </div>
           <DialogFooter>
