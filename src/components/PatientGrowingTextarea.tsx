@@ -2,11 +2,11 @@ import { useLayoutEffect, useRef } from "react";
 import { Textarea, type TextareaProps } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-export default function PatientGrowingTextarea({ value, className, rows = 2, ...props }: TextareaProps) {
+export default function PatientGrowingTextarea({ value, className, rows = 2, fill = false, ...props }: TextareaProps & { fill?: boolean }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) return;
+    if (!element || fill) return;
     const resize = () => {
       element.style.height = "auto";
       element.style.height = `${element.scrollHeight + element.offsetHeight - element.clientHeight}px`;
@@ -21,7 +21,7 @@ export default function PatientGrowingTextarea({ value, className, rows = 2, ...
     });
     widthObserver.observe(element);
     return () => widthObserver.disconnect();
-  }, [value, rows]);
+  }, [value, rows, fill]);
   return <Textarea ref={ref} value={value} rows={rows}
-    className={cn("min-h-0 resize-none overflow-hidden rounded-xl py-1.5", className)} {...props} />;
+    className={cn("min-h-0 resize-none rounded-xl py-1.5", fill ? "flex-1 overflow-y-auto" : "overflow-hidden", className)} {...props} />;
 }

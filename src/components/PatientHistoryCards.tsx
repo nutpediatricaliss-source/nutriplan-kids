@@ -74,14 +74,14 @@ export default function PatientHistoryCards({ patient, onSaved, generalCard }: {
   };
 
   return <>
-    <div className="grid items-start gap-3 lg:grid-cols-2">
+    <div className="grid items-stretch gap-3 lg:grid-cols-2">
     {generalCard}
-    <Card className="rounded-2xl">
+    <Card className="flex h-full flex-col rounded-2xl">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3"><CardTitle className="text-base">Contacto y facturación</CardTitle>
         <Button form="patient-contact-form" type="submit" size="sm" disabled={savingContact} className="h-8 rounded-xl"><Save className="mr-1.5 h-3.5 w-3.5" />Guardar cambios</Button>
       </CardHeader>
-      <CardContent className="px-4 pb-3">
-        <form id="patient-contact-form" noValidate className="space-y-1" onSubmit={async (event) => {
+      <CardContent className="flex flex-1 flex-col px-4 pb-3">
+        <form id="patient-contact-form" noValidate className="flex flex-1 flex-col space-y-1" onSubmit={async (event) => {
           event.preventDefault();
           if (!validContactEmail(contact.contacto_correo)) { setEmailError(true); return; }
           setSavingContact(true);
@@ -107,8 +107,8 @@ export default function PatientHistoryCards({ patient, onSaved, generalCard }: {
               {field === "contacto_correo" && emailError && <p id="contact-email-error" role="alert" className="text-sm text-destructive">Ingresa un correo electrónico válido.</p>}
             </div>)}
           </div>
-          <div className="space-y-1"><Label className="text-xs" htmlFor="datos_facturacion">Datos de facturación</Label>
-            <PatientGrowingTextarea id="datos_facturacion" rows={2} value={contact.datos_facturacion} onChange={(event) => setContact({ ...contact, datos_facturacion: event.target.value })} />
+          <div className="flex min-h-0 flex-1 flex-col space-y-1"><Label className="text-xs" htmlFor="datos_facturacion">Datos de facturación</Label>
+            <PatientGrowingTextarea id="datos_facturacion" rows={2} fill value={contact.datos_facturacion} onChange={(event) => setContact({ ...contact, datos_facturacion: event.target.value })} />
           </div>
         </form>
       </CardContent>

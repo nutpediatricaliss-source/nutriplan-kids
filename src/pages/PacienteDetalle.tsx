@@ -318,12 +318,12 @@ export default function PacienteDetalle() {
       <PatientHistoryCards key={paciente.id} patient={paciente}
         onSaved={(patch) => setPaciente((current) => current ? { ...current, ...patch } : current)}
         generalCard={
-      <Card className="rounded-2xl">
+      <Card className="flex h-full flex-col rounded-2xl">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-4 py-3">
           <CardTitle className="text-base">Datos generales</CardTitle>
           <Button onClick={guardarPaciente} disabled={savingPaciente} size="sm" className="h-8 rounded-xl"><Save className="mr-1.5 h-3.5 w-3.5" />Guardar cambios</Button>
         </CardHeader>
-        <CardContent className="space-y-2 px-4 pb-3">
+        <CardContent className="flex flex-1 flex-col space-y-2 px-4 pb-3">
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="min-w-0 space-y-1">
               <Label className="text-xs" htmlFor="paciente-nombre">Nombre</Label>
@@ -362,17 +362,18 @@ export default function PacienteDetalle() {
               </Select>
             </div>
           </div>
-          <div className="grid items-start gap-2 sm:grid-cols-2">
+          <div className="grid flex-1 gap-2 sm:grid-cols-2">
             <div className="min-w-0 space-y-1">
               <Label className="text-xs" htmlFor="paciente-diagnosticos">Diagnóstico</Label>
               <TagsInput id="paciente-diagnosticos" value={paciente.diagnosticos} suggestions={suggestions}
                 onChange={(diagnosticos) => setPaciente((current) => current ? { ...current, diagnosticos } : current)} />
               {suggestionsError && <p className="text-sm text-destructive">No se pudieron cargar las sugerencias.</p>}
             </div>
-            <div className="min-w-0 space-y-1">
+            <div className="flex min-w-0 flex-col space-y-1">
               <Label className="text-xs" htmlFor="paciente-notas-generales">Notas generales</Label>
               <PatientGrowingTextarea
                 id="paciente-notas-generales"
+                fill
                 value={paciente.notas_generales ?? ""}
                 onChange={(e) =>
                   setPaciente({ ...paciente, notas_generales: e.target.value })
