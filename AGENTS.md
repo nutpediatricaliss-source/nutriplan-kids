@@ -1,4 +1,5 @@
 # Architecture rules
+- Keep the 24-hour recall as optional consultation text in the existing consultation draft and save payload, with isolated field/preview controls that do not alter nutritional calculations.
 - Keep patient tag normalization in a shared pure helper and suggestions scoped to the signed-in user's paginated patient records and individual field, so forms deduplicate consistently without mixing fields or exposing another user's tags.
 - Keep contact and clinical history in separate patient cards with independent drafts and field-scoped saves, so saving one section cannot overwrite unsaved data in another.
 - Keep appointments in a dedicated patient card and shared query hook; complete same-date scheduled appointments with an invoker-security consultation trigger so saving and completion are atomic and obey owner access.

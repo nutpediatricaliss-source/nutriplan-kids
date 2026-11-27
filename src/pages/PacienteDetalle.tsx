@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import TagsInput from "@/components/TagsInput";
 import PatientHistoryCards, { type PatientHistoryData } from "@/components/PatientHistoryCards";
 import PatientAllergies from "@/components/PatientAllergies";
+import DietaryRecall, { DietaryRecallPreview } from "@/components/DietaryRecall";
 import PatientAppointments from "@/components/PatientAppointments";
 import { usePatientAppointments } from "@/hooks/usePatientAppointments";
 import { appointmentLabel, groupAppointments } from "@/lib/appointments";
@@ -79,6 +80,7 @@ type Consulta = {
   perimetro_cefalico: number | null;
   motivo_consulta: string | null;
   notas: string | null;
+  recordatorio_24h: string | null;
   formula_ree: string | null;
   factor_actividad: number | null;
   ree_kcal: number | null;
@@ -110,6 +112,7 @@ export default function PacienteDetalle() {
   const [pc, setPc] = useState<string>("");
   const [motivo, setMotivo] = useState("");
   const [notas, setNotas] = useState("");
+  const [recordatorio, setRecordatorio] = useState("");
   const [formula, setFormula] = useState<FormulaREE>("schofield-wh");
   const [factor, setFactor] = useState("1.55");
   const [pctHco, setPctHco] = useState(55);
@@ -127,6 +130,7 @@ export default function PacienteDetalle() {
     setMotivo("");
     setNotas("");
     setFormula("schofield-wh");
+    setRecordatorio("");
     setFactor("1.55");
     setPctHco(55);
     setPctProt(15);
@@ -141,6 +145,7 @@ export default function PacienteDetalle() {
     setPc(c.perimetro_cefalico != null ? String(c.perimetro_cefalico) : "");
     setMotivo(c.motivo_consulta ?? "");
     setNotas(c.notas ?? "");
+    setRecordatorio(c.recordatorio_24h ?? "");
     setFormula(((c.formula_ree as FormulaREE) || "schofield-wh"));
     const f = c.factor_actividad != null ? String(c.factor_actividad) : "1.55";
     const match = actividades.find((a) => parseFloat(a.value) === parseFloat(f));
@@ -218,6 +223,7 @@ export default function PacienteDetalle() {
       perimetro_cefalico: parseFloat(pc) || null,
       motivo_consulta: motivo || null,
       notas: notas || null,
+      recordatorio_24h: recordatorio.trim() ? recordatorio : null,
       formula_ree: formula,
       factor_actividad: parseFloat(factor),
       ree_kcal: ree,
@@ -245,6 +251,7 @@ export default function PacienteDetalle() {
     setMotivo("");
     setNotas("");
     fetchAll();
+    setRecordatorio("");
   };
 
   const eliminarConsulta = async (cid: string) => {
@@ -400,7 +407,7 @@ export default function PacienteDetalle() {
                   title="Editar consulta"
                   className="cursor-pointer transition-colors hover:bg-muted/60 flex flex-wrap items-start justify-between gap-3 rounded-2xl border bg-muted/30 p-4"
                 >
-                  <div className="space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 text-sm font-semibold">
                       <CalendarDays className="h-4 w-4 text-muted-foreground" />
                       {c.fecha}
@@ -451,6 +458,7 @@ export default function PacienteDetalle() {
                         {c.notas}
                       </p>
                     )}
+                    {c.recordatorio_24h?.trim() && <DietaryRecallPreview value={c.recordatorio_24h} consultationId={c.id} />}
                   </div>
                   <Button
                     variant="ghost"
@@ -520,6 +528,8 @@ export default function PacienteDetalle() {
                 </div>
               )}
             </div>
+
+            <DietaryRecall value={recordatorio} onChange={setRecordatorio} />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">

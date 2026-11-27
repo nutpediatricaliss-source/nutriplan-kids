@@ -125,6 +125,7 @@ export type Database = {
           paciente_id: string
           perimetro_cefalico: number | null
           peso: number | null
+          recordatorio_24h: string | null
           ree_kcal: number | null
           talla: number | null
         }
@@ -140,6 +141,7 @@ export type Database = {
           paciente_id: string
           perimetro_cefalico?: number | null
           peso?: number | null
+          recordatorio_24h?: string | null
           ree_kcal?: number | null
           talla?: number | null
         }
@@ -155,6 +157,7 @@ export type Database = {
           paciente_id?: string
           perimetro_cefalico?: number | null
           peso?: number | null
+          recordatorio_24h?: string | null
           ree_kcal?: number | null
           talla?: number | null
         }

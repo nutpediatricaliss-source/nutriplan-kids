@@ -16,3 +16,8 @@
 - [x] Add optional patient fields without changing access rules.
 - [x] Add separate contact/history cards, scoped tag suggestions, allergy badges and representative search.
 - [x] Test validation and patient save/reload, confirm existing records, and commit.
+
+# Consultation 24-hour recall
+- [ ] Add optional recall field without changing access rules or existing consultation data.
+- [ ] Add growing recall input, safe format insertion, and expandable history preview.
+- [ ] Test new/edit consultation save/reload and existing consultation compatibility; commit.

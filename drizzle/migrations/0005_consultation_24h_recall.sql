@@ -1,0 +1,1 @@
+ALTER TABLE public.consultas ADD COLUMN recordatorio_24h text;

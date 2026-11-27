@@ -36,6 +36,13 @@
       "when": 1795749882437,
       "tag": "0004_patient_contact_clinical_history",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795750342397,
+      "tag": "0005_consultation_24h_recall",
+      "breakpoints": true
     }
   ]
 }
