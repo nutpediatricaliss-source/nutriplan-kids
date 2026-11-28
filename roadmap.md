@@ -31,3 +31,8 @@
 - [x] Add searchable patient assignment with free-name compatibility in normal plans only.
 - [x] Add patient menu card with open, complete duplicate and confirmed delete.
 - [x] Test assignment, copying and existing plans; verify PDF name compatibility and commit.
+
+# Patient summary and safety alerts in menu editor
+- [x] Add compact patient summary for assigned normal plans only.
+- [x] Add whole-plan word-based patient checks, item badges, patient alarm category and nonblocking add notifications.
+- [x] Test matching rules and signed-in editing/dragging, verify existing alarms and unassigned/template plans; commit.

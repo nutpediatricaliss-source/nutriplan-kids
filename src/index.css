@@ -35,6 +35,9 @@ All colors MUST be HSL.
     --allergy: 5 65% 95%;
     --allergy-foreground: 5 48% 38%;
     --allergy-border: 5 50% 85%;
+    --intolerance: 28 90% 94%;
+    --intolerance-foreground: 25 80% 34%;
+    --intolerance-border: 28 70% 80%;
 
     --border: 37 25% 88%;
     --input: 37 25% 88%;
@@ -91,6 +94,9 @@ All colors MUST be HSL.
     --allergy: 5 32% 22%;
     --allergy-foreground: 5 65% 85%;
     --allergy-border: 5 35% 38%;
+    --intolerance: 25 42% 20%;
+    --intolerance-foreground: 28 85% 82%;
+    --intolerance-border: 25 45% 38%;
 
     --border: 30 10% 20%;
     --input: 30 10% 20%;
@@ -123,6 +129,16 @@ All colors MUST be HSL.
     background-color: hsl(var(--allergy));
     color: hsl(var(--allergy-foreground));
     border-color: hsl(var(--allergy-border));
+  }
+  .intolerance-badge {
+    background-color: hsl(var(--intolerance));
+    color: hsl(var(--intolerance-foreground));
+    border-color: hsl(var(--intolerance-border));
+  }
+  .patient-dislike-badge {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--border));
   }
 }
 

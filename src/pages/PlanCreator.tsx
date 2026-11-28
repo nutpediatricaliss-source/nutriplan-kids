@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GoalBar from "@/components/GoalBar";
 import PlanPatientSelector from "@/components/PlanPatientSelector";
+import PlanPatientSummary, { PatientAlertBadge } from "@/components/PlanPatientSummary";
+import { usePlanSafetyPatient } from "@/hooks/usePlanSafetyPatient";
+import { patientPlanAlerts, patientAlertText } from "@/lib/patientSafety";
 import { metaDesdeConsulta, type Macros4 } from "@/lib/goalProgress";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -378,6 +381,27 @@ export default function PlanCreator() {
 
   // ─── Plan updates ──────────────────────────────────────────────────────
   const isTemplate = Boolean((plan as any)?.es_plantilla);
+  const safetyPatientId = isTemplate ? null : plan?.paciente_id ?? null;
+  const safetyPatientQuery = usePlanSafetyPatient(safetyPatientId);
+  const safetyPatient = safetyPatientId ? safetyPatientQuery.data ?? null : null;
+  const patientAlerts = useMemo(() => patientPlanAlerts(safetyPatient, items, alimentos, recetas), [safetyPatient, items, alimentos, recetas]);
+  const patientAlertsByItem = useMemo(() => {
+    const byItem = new Map<string, typeof patientAlerts>();
+    for (const alert of patientAlerts) byItem.set(alert.itemId, [...(byItem.get(alert.itemId) ?? []), alert]);
+    return byItem;
+  }, [patientAlerts]);
+  const previousPatientAlerts = useRef<{ patientId: string; planId: string; keys: Set<string> } | null>(null);
+  useEffect(() => {
+    if (!safetyPatient || !plan || loading) { previousPatientAlerts.current = null; return; }
+    const key = (alert: typeof patientAlerts[number]) => `${alert.itemId}:${alert.kind}:${alert.label}`;
+    const previous = previousPatientAlerts.current;
+    if (previous?.patientId === safetyPatient.id && previous.planId === plan.id) {
+      const added = patientAlerts.filter((alert) => alert.kind !== "dislike" && !previous.keys.has(key(alert)));
+      const first = added[0];
+      if (first) toast.warning(`${patientAlertText(first)} — ${first.name}${added.length > 1 ? ` (+${added.length - 1})` : ""}`);
+    }
+    previousPatientAlerts.current = { patientId: safetyPatient.id, planId: plan.id, keys: new Set(patientAlerts.map(key)) };
+  }, [safetyPatient, patientAlerts, plan?.id, loading]);
   const markTemplateDirty = () => {
     templateDirtyRef.current = true;
     setTemplateDirty(true);
@@ -800,6 +824,7 @@ export default function PlanCreator() {
   }, [plan, items, tiemposComida, alimentos, recetas]);
 
   const [alarmasOpen, setAlarmasOpen] = useState(false);
+  const alarmCount = alarmas.length + patientAlerts.length;
 
   // ─── Edición inline de nombre y nota ────────────────────────────────
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
@@ -1104,6 +1129,13 @@ export default function PlanCreator() {
           </div>
         </div>
 
+        {safetyPatient && <PlanPatientSummary key={safetyPatient.id} patient={safetyPatient} />}
+        {safetyPatientId && !safetyPatient && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 text-xs text-muted-foreground">
+            {safetyPatientQuery.isError ? <>No se pudo cargar el resumen ni las alertas del paciente.<Button variant="outline" size="sm" onClick={() => void safetyPatientQuery.refetch()}>Reintentar</Button></> : safetyPatientQuery.isLoading ? "Cargando resumen del paciente…" : "Paciente asignado no disponible."}
+          </div>
+        )}
+
         {/* PDF Config Dialog */}
         <PdfConfigDialog
           open={pdfDialogOpen}
@@ -1171,24 +1203,31 @@ export default function PlanCreator() {
         {/* ─── Alarmas del menú ──────────────────────────────────────────── */}
         <Collapsible open={alarmasOpen} onOpenChange={setAlarmasOpen}>
           <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-accent/50"
-            style={{ borderColor: alarmas.length > 0 ? "hsl(var(--gold-dark))" : "hsl(var(--sage))", backgroundColor: alarmas.length > 0 ? "hsl(var(--gold-light) / 0.3)" : "hsl(var(--sage) / 0.2)" }}>
-            {alarmas.length > 0 ? (
+            style={{ borderColor: alarmCount > 0 ? "hsl(var(--gold-dark))" : "hsl(var(--sage))", backgroundColor: alarmCount > 0 ? "hsl(var(--gold-light) / 0.3)" : "hsl(var(--sage) / 0.2)" }}>
+            {alarmCount > 0 ? (
               <AlertTriangle className="h-4 w-4 text-orange-500" />
             ) : (
               <CheckCircle className="h-4 w-4 text-green-600" />
             )}
             Alarmas del Menú
-            {alarmas.length > 0 && (
+            {alarmCount > 0 && (
               <Badge variant="secondary" className="ml-1 bg-orange-100 text-orange-700 text-xs">
-                {alarmas.length}
+                {alarmCount}
               </Badge>
             )}
-            {alarmas.length === 0 && (
+            {alarmCount === 0 && (
               <span className="text-xs font-normal text-green-600">— Todo bien</span>
             )}
             <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform ${alarmasOpen ? "rotate-0" : "-rotate-90"}`} />
           </CollapsibleTrigger>
           <CollapsibleContent>
+            {patientAlerts.length > 0 && <div className="mt-1 max-h-48 space-y-1 overflow-y-auto rounded-lg border bg-background p-3">
+              <h3 className="px-2 pb-1 text-xs font-semibold">Paciente <span className="text-muted-foreground">({patientAlerts.length})</span></h3>
+              {patientAlerts.map((alert) => <Button key={`${alert.itemId}:${alert.kind}:${alert.label}`} variant="ghost"
+                className="h-auto w-full justify-start gap-2 whitespace-normal px-2 py-1.5 text-left text-xs" onClick={() => setCurrentDay(alert.day)}>
+                <PatientAlertBadge alert={alert} /><span className="min-w-0 break-words">Día {alert.day} · {alert.meal}: {alert.name}{alert.kind === "dislike" ? ` (${alert.label})` : ""}</span>
+              </Button>)}
+            </div>}
             {alarmas.length > 0 && (
               <div className="mt-1 space-y-1 rounded-lg border border-border/40 bg-background p-3 max-h-48 overflow-y-auto">
                 {alarmas.map((a, idx) => (
@@ -1412,6 +1451,10 @@ export default function PlanCreator() {
                                       <StickyNote className="h-3 w-3" />
                                     </button>
                                   </div>
+
+                                  {(patientAlertsByItem.get(item.id)?.length ?? 0) > 0 && <div className="mt-1 flex flex-wrap gap-1">
+                                    {patientAlertsByItem.get(item.id)?.map((alert) => <PatientAlertBadge key={`${alert.kind}:${alert.label}`} alert={alert} />)}
+                                  </div>}
 
                                   {editingNoteId === item.id && (
                                     <DebouncedInput
