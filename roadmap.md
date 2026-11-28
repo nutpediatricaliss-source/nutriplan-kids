@@ -26,3 +26,8 @@
 - [x] Preserve food preferences as free text and stop suggesting preference tags.
 - [x] Compact independent general/contact/history cards and appointment tiles without altering consultations or Dashboard.
 - [x] Verify preserved data, independent saves, appointment actions and desktop/mobile layout; commit.
+
+# Patient-linked menu plans
+- [x] Add searchable patient assignment with free-name compatibility in normal plans only.
+- [x] Add patient menu card with open, complete duplicate and confirmed delete.
+- [x] Test assignment, copying and existing plans; verify PDF name compatibility and commit.

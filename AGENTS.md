@@ -5,3 +5,4 @@
 - Keep appointments in a dedicated patient card and shared query hook; complete same-date scheduled appointments with an invoker-security consultation trigger so saving and completion are atomic and obey owner access.
 - Keep Dashboard calendar dates as ISO date-only strings with America/Guayaquil today and UTC date arithmetic; query paginated owner-scoped records by visible dates and reuse the patient appointment form without changing patient-page behavior.
 - Keep compact patient fields in independently saved cards, with auto-growing textareas and additive free-text preference columns; retain deprecated arrays only as a legacy-read fallback to avoid breaking deployed clients.
+- Keep normal-plan patient assignment in an isolated debounced selector and patient plan actions in a dedicated card; paginate owner-scoped lists and copy every plan field and item independently so templates and existing plans stay unchanged.

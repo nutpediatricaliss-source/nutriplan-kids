@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GoalBar from "@/components/GoalBar";
+import PlanPatientSelector from "@/components/PlanPatientSelector";
 import { metaDesdeConsulta, type Macros4 } from "@/lib/goalProgress";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -383,18 +384,19 @@ export default function PlanCreator() {
   };
 
   const updatePlan = async (updates: Partial<PlanMenu>) => {
-    if (!plan) return;
+    if (!plan) return false;
     if (isTemplate) {
       setPlan((current) => current ? ({ ...current, ...updates } as PlanMenu) : current);
       markTemplateDirty();
-      return;
+      return true;
     }
     const { error } = await supabase
       .from("planes_menu")
       .update(updates)
       .eq("id", plan.id);
-    if (error) toast.error("Error al guardar");
-    else setPlan({ ...plan, ...updates } as PlanMenu);
+    if (error) { toast.error("Error al guardar"); return false; }
+    setPlan((current) => current ? { ...current, ...updates } : current);
+    return true;
   };
 
   const savePlan = async () => {
@@ -977,11 +979,16 @@ export default function PlanCreator() {
               {templateDirty ? "Cambios sin guardar" : "Editando plantilla"}
             </Badge>
           )}
-          <DebouncedInput
+          {isTemplate ? <DebouncedInput
             value={plan.nombre_paciente}
             onChange={(v) => updatePlan({ nombre_paciente: v })}
             className="w-56 font-semibold bg-background"
-          />
+          /> : <PlanPatientSelector name={plan.nombre_paciente} patientId={plan.paciente_id}
+            onChange={async (assignment) => {
+              const saved = await updatePlan(assignment);
+              if (saved && pacienteIdParam) navigate(`/plan/${plan.id}`, { replace: true });
+              return saved;
+            }} />}
           <Select
             value={String(plan.dias)}
             onValueChange={(v) => updatePlan({ dias: parseInt(v) })}

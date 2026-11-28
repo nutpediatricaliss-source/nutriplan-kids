@@ -12,6 +12,7 @@ import PatientGrowingTextarea from "@/components/PatientGrowingTextarea";
 import PatientAllergies from "@/components/PatientAllergies";
 import DietaryRecall, { DietaryRecallPreview } from "@/components/DietaryRecall";
 import PatientAppointments from "@/components/PatientAppointments";
+import PatientMenuPlans from "@/components/PatientMenuPlans";
 import { usePatientAppointments } from "@/hooks/usePatientAppointments";
 import { appointmentLabel, groupAppointments } from "@/lib/appointments";
 import { useDiagnosisSuggestions } from "@/hooks/useDiagnosisSuggestions";
@@ -265,11 +266,11 @@ export default function PacienteDetalle() {
   };
 
   const crearPlan = async () => {
-    if (!paciente) return;
+    if (!paciente || !user) return;
     const { data, error } = await supabase
       .from("planes_menu")
       .insert({
-        user_id: user!.id,
+        user_id: user.id,
         nombre_paciente: paciente.nombre,
         paciente_id: paciente.id,
         dias: 14,
@@ -390,6 +391,8 @@ export default function PacienteDetalle() {
       <PatientAppointments patientId={paciente.id} patientName={paciente.nombre}
         appointments={appointmentsQuery.data ?? []} loading={appointmentsQuery.isLoading} error={appointmentsQuery.isError}
         dialogOpen={appointmentOpen} onDialogChange={setAppointmentOpen} onChanged={() => { void appointmentsQuery.refetch(); }} />
+
+      <PatientMenuPlans patientId={paciente.id} onCreate={crearPlan} />
 
       <Card className="rounded-2xl">
         <CardHeader>
