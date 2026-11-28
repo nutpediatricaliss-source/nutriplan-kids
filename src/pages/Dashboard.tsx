@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { PlanMenu } from "@/lib/types";
+import { normalizeItemMark } from "@/lib/itemMarks";
 import { Button } from "@/components/ui/button";
 import DashboardAgenda from "@/components/DashboardAgenda";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -204,7 +205,7 @@ export default function Dashboard() {
           if (rest.tipo === "alimento") nombre_override = aNames.get(rest.item_id) ?? null;
           else if (rest.tipo === "receta") nombre_override = rNames.get(rest.item_id) ?? null;
         }
-        return { ...rest, nombre_override };
+        return { ...rest, nombre_override, marca: normalizeItemMark(rest.marca) };
       }),
     };
 
@@ -366,6 +367,7 @@ export default function Dashboard() {
           porcion: it.porcion ?? "",
           nota_menu: it.nota_menu ?? "",
           nombre_override,
+          marca: normalizeItemMark(it.marca),
           orden: it.orden ?? 0,
           incluir_detalle_pdf: it.incluir_detalle_pdf ?? true,
         };

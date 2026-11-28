@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { PlanMenu, PlanItem, Alimento, Receta } from "./types";
+import { normalizeItemMark, itemMarkPrintColors, type ItemMark } from "./itemMarks";
 
 // ─── Brand colors ──────────────────────────────────────────────────────────
 const COLORS = {
@@ -294,9 +295,9 @@ function renderGeneralidades(doc: jsPDF, config: PdfConfig, logoData: LoadedImag
   drawFooter(doc, config.contacto);
 }
 
-type ListRun = { text: string; bold: boolean; gold: boolean };
+type ListRun = { text: string; bold: boolean; gold: boolean; marca?: ItemMark | null };
 
-function listItemLabel(item: PlanItem, data: PdfData): string {
+function listItemRuns(item: PlanItem, data: PdfData): ListRun[] {
   const anyItem = item as any;
   let name = "";
   let qty = "";
@@ -318,9 +319,9 @@ function listItemLabel(item: PlanItem, data: PdfData): string {
       qty = String(item.porcion);
     }
   }
-  let label = qty ? `${name} (${qty})` : name;
-  if (item.nota_menu) label += ` (${item.nota_menu})`;
-  return label;
+  let suffix = qty ? `(${qty})` : "";
+  if (item.nota_menu) suffix += `${suffix ? " " : ""}(${item.nota_menu})`;
+  return [{ text: name, bold: false, gold: false, marca: normalizeItemMark(item.marca) }, ...(suffix ? [{ text: suffix, bold: false, gold: false }] : [])];
 }
 
 /** Word-wraps mixed-style runs into lines. */
@@ -417,7 +418,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
         const runs: ListRun[] = [{ text: `${tiempo}:`, bold: true, gold: true }];
         dayItems.forEach((it, idx) => {
           if (idx > 0) runs.push({ text: "+", bold: true, gold: true });
-          runs.push({ text: listItemLabel(it, data), bold: false, gold: false });
+          runs.push(...listItemRuns(it, data));
         });
         paragraphs.push(wrapRuns(doc, runs, textMaxW, FONT));
       }
@@ -455,7 +456,7 @@ async function renderMenuLista(doc: jsPDF, data: PdfData, config: PdfConfig, log
             doc.setFont("helvetica", w.bold ? "bold" : "normal");
             doc.setFontSize(FONT);
             if (wi > 0) x += doc.getTextWidth(" ");
-            doc.setTextColor(...(w.gold ? COLORS.darkGold : COLORS.black));
+            doc.setTextColor(...(w.gold ? COLORS.darkGold : w.marca ? itemMarkPrintColors[w.marca] : COLORS.black));
             doc.text(w.text, x, y);
             x += doc.getTextWidth(w.text);
           });
@@ -596,13 +597,21 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
       doc.setFontSize(FONT);
       const tiempoLines: string[] = doc.splitTextToSize(tiempo, TIEMPO_W - PAD * 2);
       doc.setFont("helvetica", "normal");
-      const cells: string[][] = [];
+      const cells: { text: string; marca: ItemMark | null; nameStart: number; nameEnd: number }[][] = [];
       for (let i = 0; i < 7; i++) {
-        const lines: string[] = [];
+        const lines: typeof cells[number] = [];
         if (i < numDays) {
           const items = data.items.filter((it) => it.dia === weekStart + i && it.tiempo_comida === tiempo);
           for (const it of items) {
-            lines.push(...(doc.splitTextToSize(`• ${gridItemLabel(it, data)}`, colW - PAD * 2) as string[]));
+            const label = `• ${gridItemLabel(it, data)}`;
+            const name = it.nombre_override || (it.tipo === "alimento" ? data.alimentos.find((a) => a.id === it.item_id)?.nombre ?? "Alimento" : it.tipo === "receta" ? data.recetas.find((r) => r.id === it.item_id)?.nombre ?? "Receta" : "Personalizado");
+            let cursor = 0;
+            for (const text of doc.splitTextToSize(label, colW - PAD * 2) as string[]) {
+              const found = label.indexOf(text, cursor);
+              const offset = found >= 0 ? found : cursor;
+              lines.push({ text, marca: normalizeItemMark(it.marca), nameStart: Math.max(0, 2 - offset), nameEnd: Math.max(0, Math.min(text.length, 2 + name.length - offset)) });
+              cursor = offset + text.length;
+            }
           }
         }
         cells.push(lines);
@@ -630,7 +639,20 @@ function renderMenuGrid(doc: jsPDF, data: PdfData, config: PdfConfig, logoData: 
       doc.setTextColor(...COLORS.black);
       cells.forEach((lines, i) => {
         const x = M + TIEMPO_W + i * colW;
-        lines.forEach((l, k) => doc.text(l, x + PAD, y + PAD + 2.6 + k * LINE_H));
+        lines.forEach((line, k) => {
+          const lineY = y + PAD + 2.6 + k * LINE_H;
+          const startX = x + PAD;
+          doc.setTextColor(...COLORS.black);
+          if (!line.marca || line.nameEnd <= line.nameStart) { doc.text(line.text, startX, lineY); return; }
+          const before = line.text.slice(0, line.nameStart);
+          const name = line.text.slice(line.nameStart, line.nameEnd);
+          const after = line.text.slice(line.nameEnd);
+          if (before) doc.text(before, startX, lineY);
+          doc.setTextColor(...itemMarkPrintColors[line.marca]);
+          doc.text(name, startX + doc.getTextWidth(before), lineY);
+          doc.setTextColor(...COLORS.black);
+          if (after) doc.text(after, startX + doc.getTextWidth(before + name), lineY);
+        });
       });
 
       doc.setDrawColor(...COLORS.gold);

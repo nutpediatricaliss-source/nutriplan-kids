@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GoalBar from "@/components/GoalBar";
 import PlanPatientSelector from "@/components/PlanPatientSelector";
+import ItemMarkControls from "@/components/ItemMarkControls";
+import { itemMarkClass, normalizeItemMark } from "@/lib/itemMarks";
 import PlanPatientSummary, { PatientAlertBadge } from "@/components/PlanPatientSummary";
 import { usePlanSafetyPatient } from "@/hooks/usePlanSafetyPatient";
 import { patientPlanAlerts, patientAlertText } from "@/lib/patientSafety";
@@ -473,6 +475,7 @@ export default function PlanCreator() {
       incluir_detalle_pdf: item.incluir_detalle_pdf ?? true,
       orden: item.orden,
       nombre_override: (item as any).nombre_override ?? null,
+      marca: normalizeItemMark(item.marca),
     }));
 
     if (rows.length > 0) {
@@ -659,7 +662,7 @@ export default function PlanCreator() {
       return;
     }
     await supabase.from("plan_items").update(updates).eq("id", itemId);
-    setItems(items.map((i) => (i.id === itemId ? { ...i, ...updates } : i)));
+    setItems((current) => current.map((i) => (i.id === itemId ? { ...i, ...updates } : i)));
   };
 
   const getItemName = (item: PlanItem) => {
@@ -890,6 +893,7 @@ export default function PlanCreator() {
           nota_menu: item.nota_menu,
           incluir_detalle_pdf: item.incluir_detalle_pdf,
           nombre_override: (item as any).nombre_override ?? null,
+          marca: normalizeItemMark(item.marca),
           orden: existingCount + idx,
         });
       });
@@ -1421,12 +1425,12 @@ export default function PlanCreator() {
                                         }}
                                         onBlur={() => setEditingNameId(null)}
                                         placeholder="Nombre personalizado..."
-                                        className="h-6 text-xs flex-1"
+                                        className={`h-6 text-xs flex-1 ${itemMarkClass(item.marca)}`}
                                         autoFocus
                                       />
                                     ) : (
                                       <>
-                                        <p className="text-sm font-medium truncate">{getItemName(item)}</p>
+                                        <p className={`text-sm font-medium truncate ${itemMarkClass(item.marca)}`}>{getItemName(item)}</p>
                                         {item.tipo === "personalizado" && (
                                           <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">
                                             Personalizado
@@ -1450,6 +1454,7 @@ export default function PlanCreator() {
                                     >
                                       <StickyNote className="h-3 w-3" />
                                     </button>
+                                    <ItemMarkControls value={item.marca} onChange={(marca) => { void updateItem(item.id, { marca }); }} />
                                   </div>
 
                                   {(patientAlertsByItem.get(item.id)?.length ?? 0) > 0 && <div className="mt-1 flex flex-wrap gap-1">

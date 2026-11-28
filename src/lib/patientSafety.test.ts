@@ -6,7 +6,7 @@ const patient: SafetyPatient = { id: "patient", nombre: "Ana", fecha_nacimiento:
   alergias: ["Huevo"], intolerancias: ["Lactosa"], alimentos_gustan_texto: "Pera", alimentos_no_gustan_texto: "Brócoli, papaya\nArroz con pollo",
   alimentos_gustan: null, alimentos_no_gustan: null };
 const item: PlanItem = { id: "item", plan_id: "plan", item_id: "recipe", dia: 8, tiempo_comida: "Cena", tipo: "personalizado",
-  nombre_override: "Claras con queso", nota_menu: "", orden: 0, porcion: "1", incluir_detalle_pdf: false, created_at: "2026-01-01" };
+  nombre_override: "Claras con queso", nota_menu: "", orden: 0, porcion: "1", incluir_detalle_pdf: false, created_at: "2026-01-01", marca: null };
 
 describe("patient safety matching", () => {
   it("matches whole words across case, accents and singular/plural including nueces and panes", () => {

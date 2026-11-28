@@ -259,6 +259,7 @@ export type Database = {
           id: string
           incluir_detalle_pdf: boolean | null
           item_id: string
+          marca: string | null
           nombre_override: string | null
           nota_menu: string | null
           orden: number
@@ -273,6 +274,7 @@ export type Database = {
           id?: string
           incluir_detalle_pdf?: boolean | null
           item_id: string
+          marca?: string | null
           nombre_override?: string | null
           nota_menu?: string | null
           orden?: number
@@ -287,6 +289,7 @@ export type Database = {
           id?: string
           incluir_detalle_pdf?: boolean | null
           item_id?: string
+          marca?: string | null
           nombre_override?: string | null
           nota_menu?: string | null
           orden?: number

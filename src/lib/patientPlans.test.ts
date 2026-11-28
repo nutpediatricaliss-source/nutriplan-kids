@@ -28,9 +28,9 @@ describe("patient menu plans", () => {
   it("preserves item day, meal, order, portion, notes and override in independent items", () => {
     const item: PlanItem = { id: "item", created_at: "2026-01-01", plan_id: "original", dia: 14,
       tiempo_comida: "Cena", tipo: "receta", item_id: "recipe", orden: 3, porcion: "2",
-      nota_menu: "Sin sal", nombre_override: "Cena especial", incluir_detalle_pdf: false };
+      nota_menu: "Sin sal", nombre_override: "Cena especial", incluir_detalle_pdf: false, marca: "blw" };
     expect(copiedItems([item], "copy")).toEqual([{ plan_id: "copy", dia: 14, tiempo_comida: "Cena", tipo: "receta",
-      item_id: "recipe", orden: 3, porcion: "2", nota_menu: "Sin sal", nombre_override: "Cena especial", incluir_detalle_pdf: false }]);
+      item_id: "recipe", orden: 3, porcion: "2", nota_menu: "Sin sal", nombre_override: "Cena especial", incluir_detalle_pdf: false, marca: "blw" }]);
     expect(item.plan_id).toBe("original");
   });
 });

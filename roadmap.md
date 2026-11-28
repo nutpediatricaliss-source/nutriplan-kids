@@ -36,3 +36,8 @@
 - [x] Add compact patient summary for assigned normal plans only.
 - [x] Add whole-plan word-based patient checks, item badges, patient alarm category and nonblocking add notifications.
 - [x] Test matching rules and signed-in editing/dragging, verify existing alarms and unassigned/template plans; commit.
+
+# Menu item color marks
+- [x] Add nullable validated item marks and preserve them across all template/copy paths.
+- [x] Add compact exclusive orange/purple mark controls and menu-name colors.
+- [x] Render marked item names in both PDF menu layouts; test plans, templates, copying and PDF export; commit.

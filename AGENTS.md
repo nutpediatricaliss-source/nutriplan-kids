@@ -7,3 +7,4 @@
 - Keep compact patient fields in independently saved cards, with auto-growing textareas and additive free-text preference columns; retain deprecated arrays only as a legacy-read fallback to avoid breaking deployed clients.
 - Keep normal-plan patient assignment in an isolated debounced selector and patient plan actions in a dedicated card; paginate owner-scoped lists and copy every plan field and item independently so templates and existing plans stay unchanged.
 - Keep patient menu safety checks in a pure whole-word matcher and owner-scoped patient query, deriving badges and a separate alarm category from editor state without altering drag handlers, nutrition math, templates or PDF data.
+- Store exclusive menu marks on each plan item and normalize them in explicit copy/import payloads; color only menu-name text runs in PDF so quantities, layout and recipe pages remain unchanged.

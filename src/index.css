@@ -38,6 +38,8 @@ All colors MUST be HSL.
     --intolerance: 28 90% 94%;
     --intolerance-foreground: 25 80% 34%;
     --intolerance-border: 28 70% 80%;
+    --mark-allergen: 16.9306930693 87.0689655172% 45.4901960784%;
+    --mark-blw: 263.3898305085 69.9604743083% 50.3921568627%;
 
     --border: 37 25% 88%;
     --input: 37 25% 88%;
@@ -125,6 +127,22 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .mark-allergen-name { color: hsl(var(--mark-allergen)); }
+  .mark-blw-name { color: hsl(var(--mark-blw)); }
+  .item-mark-control {
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    padding: 0;
+    background: transparent;
+  }
+  .item-mark-control.mark-allergen-control, .item-mark-control.mark-allergen-control:hover { color: hsl(var(--mark-allergen)); }
+  .item-mark-control.mark-blw-control, .item-mark-control.mark-blw-control:hover { color: hsl(var(--mark-blw)); }
+  .item-mark-control[aria-pressed="false"]:hover { background: transparent; }
+  .item-mark-control.mark-allergen-control[aria-pressed="true"] { background: hsl(var(--mark-allergen)); }
+  .item-mark-control.mark-blw-control[aria-pressed="true"] { background: hsl(var(--mark-blw)); }
   .allergy-badge {
     background-color: hsl(var(--allergy));
     color: hsl(var(--allergy-foreground));
